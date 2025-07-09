@@ -1,2 +1,2 @@
-import { pool } from '../db/postgres';
-import { getDb } from '../db/mongodb';
+// import { pool } from '../db/postgres';
+// import { getDb } from '../db/mongodb';
