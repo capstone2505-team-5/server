@@ -8,7 +8,7 @@ GET /api/traces
 Response:
 [
   {
-    id: number;
+    id: string;
     input: string;
     output: string;
   }
@@ -17,7 +17,7 @@ Response:
 GET /api/traces/:id
 Response:
 {
-  id: number;
+  id: string;
   input: string;
   output: string;
 }
@@ -26,8 +26,8 @@ GET /api/annotations
 Response:
 [
   {
-    id: number;
-    traceId: number;
+    id: string;
+    traceId: string;
     note: string;
     rating: Rating;
     categories: string[];
@@ -37,8 +37,8 @@ Response:
 GET /api/annotations/:id
 Response:
 {
-  id: number;
-  traceId: number;
+  id: string;
+  traceId: string;
   note: string;
   rating: Rating;
   categories: string[];
@@ -47,14 +47,14 @@ Response:
 POST /api/annotations
 Request Body:
 {
-  traceId: number;
+  traceId: string;
   note: string;
   rating?: Rating;
 }
 Response:
 {
-  id: number;
-  traceId: number;
+  id: string;
+  traceId: string;
   note: string;
   rating: Rating;
   categories: string[];

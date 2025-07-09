@@ -12,7 +12,7 @@ export const getAnnotations = (req: Request, res: Response) => {
 
 export const getAnnotation = (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const annotation = mockAnnotations.find(a => a.id === id);
     
     if (!annotation) {
@@ -45,7 +45,7 @@ export const createAnnotation = (req: Request, res: Response) => {
     
     // Create new annotation (mock implementation)
     const newAnnotation: Annotation = {
-      id: mockAnnotations.length + 1,
+      id: (mockAnnotations.length + 1).toString(),
       traceId: traceId,
       note,
       rating,
