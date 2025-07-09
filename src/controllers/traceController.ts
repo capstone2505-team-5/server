@@ -11,7 +11,7 @@ export const getTraces = (req: Request, res: Response) => {
 
 export const getTrace = (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const trace = mockTraces.find(t => t.id === id);
 
     if (!trace) {
