@@ -66,6 +66,6 @@ POST /api/categorize
 Request Body: null
 Response:
 {
-  categories: [{traceid, categories}, {traceid, categories}...]
+  categories: [{traceId, categories}, {traceId, categories}...]
 }
 

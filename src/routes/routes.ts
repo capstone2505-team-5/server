@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getTraces, getTrace } from "../controllers/traceController";
+import { categorizeTraces, getTraces, getTrace } from "../controllers/traceController";
 import { getAnnotation, createAnnotation, getAnnotations } from "../controllers/annotationController";
 
 // import from controllers here
@@ -24,6 +24,9 @@ router.get('/annotations/:id', getAnnotation);
 
 // POST /api/annotations - Create a new annotation
 router.post('/annotations', createAnnotation);
+
+// POST /api/categorize - Create categories, add to annotations, return traceId/categories
+router.post('/categorize', categorizeTraces);
 
 
 export default router

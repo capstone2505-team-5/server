@@ -7,7 +7,7 @@ export const getTraces = (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch traces' });
   }
-}
+};
 
 export const getTrace = (req: Request, res: Response) => {
   try {
@@ -23,4 +23,14 @@ export const getTrace = (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch trace' });
   }
-}
+};
+
+export const categorizeTraces = (req: Request, res: Response) => {
+  const result = [
+    {traceId: "SYN018", categories: ["spelling", "speed"]},
+    {traceId: "SYN018", categories: ["spelling", "speed"]},
+    {traceId: "SYN018", categories: ["spelling", "speed"]},
+    {traceId: "SYN018", categories: ["spelling", "speed"]},
+  ];
+  res.json(result);
+};
