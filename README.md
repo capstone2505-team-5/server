@@ -1,6 +1,8 @@
 To run:
 1. npm install
 2. npm run dev
+3. create .env file
+---- OPENAI_API_KEY=sk-…your key…
 
 To setup PSQL DB:
 - Make a database named error_analysis

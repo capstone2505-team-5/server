@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
-import { mockAnnotations, mockTraces } from "../db/mockData";
+import { getAllAnnotations } from '../services/annotationService';
+import { mockTraces } from "../db/mockData";
 import { CreateAnnotationRequest, Annotation, Rating } from "../types/types";
 
 export const getAnnotations = (req: Request, res: Response) => {
   try {
+    const mockAnnotations = getAllAnnotations();
     res.json(mockAnnotations);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch annotations' });
@@ -13,6 +15,10 @@ export const getAnnotations = (req: Request, res: Response) => {
 export const getAnnotation = (req: Request, res: Response) => {
   try {
     const id = req.params.id;
+
+    // should replace this with a service to get the annotation
+    const mockAnnotations: Annotation[] = getAllAnnotations();
+
     const annotation = mockAnnotations.find(a => a.id === id);
     
     if (!annotation) {
@@ -42,6 +48,9 @@ export const createAnnotation = (req: Request, res: Response) => {
       res.status(404).json({ error: 'Trace not found' });
       return
     }
+
+    // should replace this with a service to get next ID probably
+    const mockAnnotations: Annotation[] = getAllAnnotations();
     
     // Create new annotation (mock implementation)
     const newAnnotation: Annotation = {
