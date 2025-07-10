@@ -28,9 +28,9 @@ export const getTrace = (req: Request, res: Response) => {
 export const categorizeTraces = (req: Request, res: Response) => {
   const result = [
     {traceId: "SYN018", categories: ["spelling", "speed"]},
-    {traceId: "SYN018", categories: ["spelling", "speed"]},
-    {traceId: "SYN018", categories: ["spelling", "speed"]},
-    {traceId: "SYN018", categories: ["spelling", "speed"]},
+    {traceId: "SYN019", categories: ["spelling", "attitude"]},
+    {traceId: "SYN021", categories: ["spelling", "speed"]},
+    {traceId: "SYN008", categories: ["speed"]},
   ];
   res.json(result);
 };

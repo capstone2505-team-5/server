@@ -69,3 +69,5 @@ Response:
   categories: [{traceId, categories}, {traceId, categories}...]
 }
 
+* categories is an array of categories
+
