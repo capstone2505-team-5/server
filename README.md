@@ -61,3 +61,11 @@ Response:
 }
 
 type Rating = 'good' | 'bad' | 'none';
+
+POST /api/categorize
+Request Body: null
+Response:
+{
+  categories: [{traceid, categories}, {traceid, categories}...]
+}
+
