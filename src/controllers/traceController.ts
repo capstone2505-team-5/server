@@ -25,6 +25,30 @@ export const getTrace = (req: Request, res: Response) => {
   }
 };
 
+export const deleteTrace = (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    
+    // Find the trace to delete
+    const traceIndex = mockTraces.findIndex(a => a.id === id);
+    
+    if (traceIndex === -1) {
+      res.status(404).json({ error: 'Trace not found' });
+      return;
+    }
+    
+    // Remove the trace from the array
+    const deletedTrace = mockTraces.splice(traceIndex, 1)[0];
+    
+    res.json({ 
+      message: 'Trace deleted successfully',
+      deletedTrace 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete trace' });
+  }
+}
+
 export const categorizeTraces = (req: Request, res: Response) => {
   const result = [
     {traceId: "SYN018", categories: ["spelling", "speed"]},
