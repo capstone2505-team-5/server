@@ -1,43 +1,55 @@
-// const { Pool } = require('pg');
+import { Pool } from 'pg';
+import * as dotenv from 'dotenv';
 
-// const pool = new Pool({
-//   user: process.env.PG_USER,
-//   host: process.env.PG_HOST,
-//   database: 'dice_game',
-//   password: process.env.PG_PASSWORD,
-//   port: 5432,
-// });
+dotenv.config();
 
-// const initializePostgres = async () => {
-//   try {
-//     await pool.query(`
-//       CREATE TABLE IF NOT EXISTS current_game (
-//         id VARCHAR(255) PRIMARY KEY,
-//         status VARCHAR(50),
-//         timestamp TIMESTAMP,
-//         player_score INTEGER DEFAULT 0,
-//         computer_score INTEGER DEFAULT 0,
-//         winner VARCHAR(50)
-//       );
+export const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
 
-//       CREATE TABLE IF NOT EXISTS current_session (
-//         id INTEGER PRIMARY KEY DEFAULT 1,
-//         total_games INTEGER DEFAULT 0,
-//         player_wins INTEGER DEFAULT 0,
-//         computer_wins INTEGER DEFAULT 0,
-//         ties INTEGER DEFAULT 0
-//       );
-//     `);
+export const initializePostgres = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS traces (
+        id VARCHAR(50) PRIMARY KEY,
+        input TEXT NOT NULL,
+        output TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
 
-//     await pool.query(`
-//       INSERT INTO current_session (id, total_games, player_wins, computer_wins, ties)
-//       VALUES (1, 0, 0, 0, 0)
-//       ON CONFLICT (id) DO NOTHING;
-//     `);
-//   } catch (error) {
-//     console.error('PostgreSQL initialization error:', error);
-//     throw error;
-//   }
-// };
+      CREATE TABLE IF NOT EXISTS annotations (
+        id VARCHAR(50) PRIMARY KEY,
+        trace_id VARCHAR(50) REFERENCES traces(id) ON DELETE CASCADE,
+        note TEXT,
+        rating TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
 
-// module.exports = { pool, initializePostgres };
+      CREATE TABLE IF NOT EXISTS categories (
+        id VARCHAR(50) PRIMARY KEY,
+        text TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS annotation_categories (
+        id VARCHAR(50) PRIMARY KEY,
+        annotation_id VARCHAR(50) NOT NULL REFERENCES annotations(id) ON DELETE CASCADE,
+        category_id VARCHAR(50) NOT NULL REFERENCES categories(id) ON DELETE CASCADE
+      );
+
+    `);
+
+    await pool.query(`
+      INSERT INTO traces (id, input, output)
+      VALUES ('2', 'Is traces table live?', 'yes')
+      ON CONFLICT (id) DO NOTHING;
+    `);
+  } catch (error) {
+    console.error('PostgreSQL initialization error:', error);
+    throw error;
+  }
+};
+
