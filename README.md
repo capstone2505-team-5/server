@@ -2,6 +2,16 @@ To run:
 1. npm install
 2. npm run dev
 
+To setup PSQL DB:
+- Make a database named error_analysis
+- Make .env file:
+    PGUSER=dev_user
+    PGPASSWORD=dev_password
+    PGDATABASE=error_analysis
+    PGHOST=localhost
+    PGPORT=5432
+- Run the server and it will create the tables for you.
+
 API Endpoints:
 
 GET /api/traces
