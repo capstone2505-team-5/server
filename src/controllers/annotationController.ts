@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { AnnotationNotFoundError, createNewAnnotation, getAllAnnotations, getAnnotationById } from '../services/annotationService';
+import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById } from '../services/annotationService';
 import { mockTraces } from "../db/mockData";
 import { CreateAnnotationRequest, Annotation, Rating } from "../types/types";
 import { get } from "http";
@@ -93,26 +93,19 @@ export const updateAnnotation = async (req: Request, res: Response) => {
 }
 
 export const deleteAnnotation = async (req: Request, res: Response) => {
-  try {
-    const id = req.params.id;
-    
+  try {    
     // Find the annotation to delete
-    const mockAnnotations: Annotation[] = await getAllAnnotations();
-    const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
-    
-    if (annotationIndex === -1) {
-      res.status(404).json({ error: 'Annotation not found' });
-      return;
-    }
-    
-    // Remove the annotation from the array
-    const deletedAnnotation = mockAnnotations.splice(annotationIndex, 1)[0];
-    
+    const deletedAnnotation = await deleteAnnotationById(req.params.id);
+        
     res.json({ 
       message: 'Annotation deleted successfully',
       deletedAnnotation 
     });
   } catch (error) {
+    if (error instanceof AnnotationNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
     res.status(500).json({ error: 'Failed to delete annotation' });
   }
 }

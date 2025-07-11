@@ -99,3 +99,36 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
     throw new Error('Database error while creating annotation');
   }
 }
+
+export const deleteAnnotationById = async (id: string): Promise<Annotation | void> => {
+  try {
+    const query = `
+      DELETE FROM annotations
+      WHERE id = $1
+      RETURNING id, trace_id, note, rating
+    `;
+
+    const result = await pool.query(query, [id]);
+
+    if (result.rowCount === 0) {
+      throw new AnnotationNotFoundError(id);
+    }
+
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      traceId: row.trace_id,
+      note: row.note,
+      rating: row.rating,
+      categories: []
+    }
+  } catch (error) {
+    console.error(`Error deleting annotation with id ${id}:`, error);
+
+    if (error instanceof AnnotationNotFoundError) {
+      throw error;
+    }
+
+    throw new Error(`Database error while deleting annotation with id ${id}`);
+  }
+}
