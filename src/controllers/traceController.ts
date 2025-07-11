@@ -4,18 +4,18 @@ import { getAllAnnotations } from "../services/annotationService";
 import { openai } from '../lib/openaiClient';
 import { deleteTraceById, getAllTraces, getTraceById, TraceNotFoundError } from "../services/traceService";
 
-export const getTraces = (req: Request, res: Response) => {
+export const getTraces = async (req: Request, res: Response) => {
   try {
-    const traces = getAllTraces()
+    const traces = await getAllTraces()
     res.json(traces);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch traces' });
   }
 };
 
-export const getTrace = (req: Request, res: Response) => {
+export const getTrace = async (req: Request, res: Response) => {
   try {
-    const trace = getTraceById(req.params.id)
+    const trace = await getTraceById(req.params.id)
     
     res.json(trace);
   } catch (error) {
@@ -23,9 +23,9 @@ export const getTrace = (req: Request, res: Response) => {
   }
 };
 
-export const deleteTrace = (req: Request, res: Response) => {
+export const deleteTrace = async (req: Request, res: Response) => {
   try {
-    const deletedTrace = deleteTraceById(req.params.id)
+    const deletedTrace = await deleteTraceById(req.params.id)
     
     res.json({ 
       message: 'Trace deleted successfully',
