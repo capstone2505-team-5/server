@@ -32,6 +32,17 @@ Response:
   output: string;
 }
 
+DELETE /api/traces/:id
+Response:
+{
+  message: "Trace deleted successfully",
+  deletedAnnotation: {
+    id: string;
+    input: string;
+    output: string;
+  }
+}
+
 GET /api/annotations
 Response:
 [
@@ -69,6 +80,35 @@ Response:
   rating: Rating;
   categories: string[];
 }
+
+PATCH /api/annotations/:id
+Request Body:
+{
+  note?: string;
+  rating?: Rating;
+}
+Response:
+{
+  id: string;
+  traceId: string;
+  note: string;
+  rating: Rating;
+  categories: string[];
+}
+
+DELETE /api/annotations/:id
+Response:
+{
+  message: "Annotation deleted successfully",
+  deletedAnnotation: {
+    id: string;
+    traceId: string;
+    note: string;
+    rating: Rating;
+    categories: string[];
+  }
+}
+
 
 type Rating = 'good' | 'bad' | 'none';
 

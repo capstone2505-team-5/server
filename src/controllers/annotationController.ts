@@ -59,3 +59,62 @@ export const createAnnotation = (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to create annotation' });
   }
 }
+
+export const updateAnnotation = (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    const { note, rating }: Annotation = req.body;
+    
+    // Find the annotation to update
+    const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
+    
+    if (annotationIndex === -1) {
+      res.status(404).json({ error: 'Annotation not found' });
+      return;
+    }
+    
+    // Validate that at least one field is provided for update
+    if (!note && !rating) {
+      res.status(400).json({ error: 'At least one field (note or rating) is required for update' });
+      return;
+    }
+    
+    // Update the annotation with provided fields
+    // This will be moved to services and have category involved later.
+    const updatedAnnotation: Annotation = {
+      ...mockAnnotations[annotationIndex],
+      ...(note && { note }),
+      ...(rating && { rating })
+    };
+    
+    mockAnnotations[annotationIndex] = updatedAnnotation;
+    
+    res.json(updatedAnnotation);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update annotation' });
+  }
+}
+
+export const deleteAnnotation = (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+    
+    // Find the annotation to delete
+    const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
+    
+    if (annotationIndex === -1) {
+      res.status(404).json({ error: 'Annotation not found' });
+      return;
+    }
+    
+    // Remove the annotation from the array
+    const deletedAnnotation = mockAnnotations.splice(annotationIndex, 1)[0];
+    
+    res.json({ 
+      message: 'Annotation deleted successfully',
+      deletedAnnotation 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete annotation' });
+  }
+}
