@@ -1,4 +1,3 @@
-import { mockTraces } from "../db/mockData";
 import { pool } from "../db/postgres";
 import { Trace } from "../types/types";
 

@@ -1,38 +1,34 @@
 import { Request, Response } from "express";
-import { getAllAnnotations } from '../services/annotationService';
+import { AnnotationNotFoundError, createNewAnnotation, getAllAnnotations, getAnnotationById } from '../services/annotationService';
 import { mockTraces } from "../db/mockData";
 import { CreateAnnotationRequest, Annotation, Rating } from "../types/types";
+import { get } from "http";
+import { getAllTraces } from "../services/traceService";
 
-export const getAnnotations = (req: Request, res: Response) => {
+export const getAnnotations = async (req: Request, res: Response) => {
   try {
-    const mockAnnotations = getAllAnnotations();
+    const mockAnnotations = await getAllAnnotations();
     res.json(mockAnnotations);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch annotations' });
   }
 }
 
-export const getAnnotation = (req: Request, res: Response) => {
+export const getAnnotation = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
-
-    // should replace this with a service to get the annotation
-    const mockAnnotations: Annotation[] = getAllAnnotations();
-
-    const annotation = mockAnnotations.find(a => a.id === id);
-    
-    if (!annotation) {
-      res.status(404).json({ error: 'Annotation not found' });
-      return;
-    }
+    const annotation: Annotation = await getAnnotationById(req.params.id)
     
     res.json(annotation);
   } catch (error) {
+    if (error instanceof AnnotationNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
     res.status(500).json({ error: 'Failed to fetch annotation' });
   }
 }
 
-export const createAnnotation = (req: Request, res: Response) => {
+export const createAnnotation = async (req: Request, res: Response) => {
   try {
     const { traceId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
     
@@ -43,39 +39,30 @@ export const createAnnotation = (req: Request, res: Response) => {
     }
     
     // Check if trace exists
-    const traceExists = mockTraces.find(t => t.id === traceId);
+    const traces = await getAllTraces()
+
+    const traceExists = traces.find(t => t.id === traceId);
     if (!traceExists) {
       res.status(404).json({ error: 'Trace not found' });
       return
     }
 
     // should replace this with a service to get next ID probably
-    const mockAnnotations: Annotation[] = getAllAnnotations();
-    
-    // Create new annotation (mock implementation)
-    const newAnnotation: Annotation = {
-      id: (mockAnnotations.length + 1).toString(),
-      traceId: traceId,
-      note,
-      rating,
-      categories: [] // You might want to add logic to determine categories
-    };
-    
-    mockAnnotations.push(newAnnotation);
-    
-    res.status(201).json(newAnnotation);
+    const annotation = await createNewAnnotation({traceId, note, rating})
+        
+    res.status(201).json(annotation);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create annotation' });
   }
 }
 
-export const updateAnnotation = (req: Request, res: Response) => {
+export const updateAnnotation = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
     const { note, rating }: Annotation = req.body;
     
     // Find the annotation to update
-    const mockAnnotations: Annotation[] = getAllAnnotations();
+    const mockAnnotations: Annotation[] = await getAllAnnotations();
     const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
     
     if (annotationIndex === -1) {
@@ -105,12 +92,12 @@ export const updateAnnotation = (req: Request, res: Response) => {
   }
 }
 
-export const deleteAnnotation = (req: Request, res: Response) => {
+export const deleteAnnotation = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
     
     // Find the annotation to delete
-    const mockAnnotations: Annotation[] = getAllAnnotations();
+    const mockAnnotations: Annotation[] = await getAllAnnotations();
     const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
     
     if (annotationIndex === -1) {

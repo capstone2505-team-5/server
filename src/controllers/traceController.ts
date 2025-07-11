@@ -19,6 +19,11 @@ export const getTrace = async (req: Request, res: Response) => {
     
     res.json(trace);
   } catch (error) {
+    if (error instanceof TraceNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
+    
     res.status(500).json({ error: 'Failed to fetch trace' });
   }
 };
@@ -43,7 +48,7 @@ export const deleteTrace = async (req: Request, res: Response) => {
 
 export const categorizeTraces = async (req: Request, res: Response) => {
   try {
-    const fullAnnotations: Annotation[] = getAllAnnotations();
+    const fullAnnotations: Annotation[] = await getAllAnnotations();
     const notes = pullNotes(fullAnnotations);
     const categories = await getCategories(notes);
     const categorizedTraces = await getCategorizedTraces(categories, pullNotesWithTraceId(fullAnnotations));
