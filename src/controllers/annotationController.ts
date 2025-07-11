@@ -75,6 +75,7 @@ export const updateAnnotation = (req: Request, res: Response) => {
     const { note, rating }: Annotation = req.body;
     
     // Find the annotation to update
+    const mockAnnotations: Annotation[] = getAllAnnotations();
     const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
     
     if (annotationIndex === -1) {
@@ -109,6 +110,7 @@ export const deleteAnnotation = (req: Request, res: Response) => {
     const id = req.params.id;
     
     // Find the annotation to delete
+    const mockAnnotations: Annotation[] = getAllAnnotations();
     const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
     
     if (annotationIndex === -1) {
