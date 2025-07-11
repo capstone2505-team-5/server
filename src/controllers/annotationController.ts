@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
-import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById } from '../services/annotationService';
-import { mockTraces } from "../db/mockData";
+import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation, Rating } from "../types/types";
-import { get } from "http";
 import { getAllTraces } from "../services/traceService";
 
 export const getAnnotations = async (req: Request, res: Response) => {
@@ -58,36 +56,21 @@ export const createAnnotation = async (req: Request, res: Response) => {
 
 export const updateAnnotation = async (req: Request, res: Response) => {
   try {
-    const id = req.params.id;
     const { note, rating }: Annotation = req.body;
-    
-    // Find the annotation to update
-    const mockAnnotations: Annotation[] = await getAllAnnotations();
-    const annotationIndex = mockAnnotations.findIndex(a => a.id === id);
-    
-    if (annotationIndex === -1) {
-      res.status(404).json({ error: 'Annotation not found' });
-      return;
-    }
     
     // Validate that at least one field is provided for update
     if (!note && !rating) {
       res.status(400).json({ error: 'At least one field (note or rating) is required for update' });
       return;
     }
-    
-    // Update the annotation with provided fields
-    // This will be moved to services and have category involved later.
-    const updatedAnnotation: Annotation = {
-      ...mockAnnotations[annotationIndex],
-      ...(note && { note }),
-      ...(rating && { rating })
-    };
-    
-    mockAnnotations[annotationIndex] = updatedAnnotation;
+    const updatedAnnotation = await updateAnnotationById(req.params.id, {note, rating})
     
     res.json(updatedAnnotation);
   } catch (error) {
+    if (error instanceof AnnotationNotFoundError) {
+      res.status(404).json({ error: error.message });
+      return;
+    }
     res.status(500).json({ error: 'Failed to update annotation' });
   }
 }

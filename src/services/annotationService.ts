@@ -100,6 +100,64 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
   }
 }
 
+export const updateAnnotationById = async (id: string, updates: Partial<Annotation>) => {
+  try {
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+        if (updates.note !== undefined) {
+      fields.push(`note = $${paramIndex++}`);
+      values.push(updates.note);
+    }
+
+    if (updates.rating !== undefined) {
+      fields.push(`rating = $${paramIndex++}`);
+      values.push(updates.rating);
+    }
+
+    if (fields.length === 0) {
+      throw new Error('No fields provided to update');
+    }
+
+    values.push(id); // for the WHERE clause
+
+    const query = `
+      UPDATE annotations
+      SET ${fields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING id, trace_id, note, rating
+    `;
+
+    const result = await pool.query<{ id: string; trace_id: string; note: string; rating: Rating }>(
+      query,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      throw new AnnotationNotFoundError(id);
+    }
+
+    const row = result.rows[0];
+
+    return {
+      id: row.id,
+      traceId: row.trace_id,
+      note: row.note,
+      rating: row.rating,
+      categories: [] // You can customize this if you're supporting categories
+    };
+  } catch (error) {
+    console.error(`Error updating annotation with id ${id}:`, error);
+
+    if (error instanceof AnnotationNotFoundError) {
+      throw error;
+    }
+
+    throw new Error(`Database error while updating annotation with id ${id}`);
+  }
+}
+
 export const deleteAnnotationById = async (id: string): Promise<Annotation | void> => {
   try {
     const query = `
