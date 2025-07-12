@@ -17,6 +17,8 @@ export interface Annotation {
   categories: string[];
 }
 
+export type NewAnnotation = Omit<Annotation, 'id' | 'categories'>
+
 // Using utility types to derive from the main Annotation interface
 export type CreateAnnotationRequest = Pick<Annotation, 'note' | 'traceId'> & {
   rating?: Rating;
