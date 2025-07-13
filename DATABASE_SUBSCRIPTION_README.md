@@ -80,3 +80,22 @@ SELECT COUNT(*) FROM traces;
 should be at least 2 projects, at least 12 spans
 
 make sure to update .env file with new `error_analysis_phoenix` database
+
+7. Update app you want to trace with Phoenix API Key from new dashboard
+generate a new key from settings
+
+8. Example new tracing from recipe app
+
+```python
+from phoenix.otel import register
+import os
+
+phoenix_api_key = os.environ.get("PHOENIX_API_KEY")
+
+tracer_provider = register(
+    protocol="http/protobuf",
+    project_name="recipe-chatbot-oneTrace",
+    headers={"Authorization": f"Bearer {phoenix_api_key}"}
+)
+tracer = tracer_provider.get_tracer(__name__)
+```
