@@ -11,9 +11,9 @@ export class TraceNotFoundError extends Error {
 export const getAllTraces = async (): Promise<Trace[]> => {
   try {
     const query = `
-      SELECT id, input, output 
-      FROM traces 
-      ORDER BY created_at DESC
+      SELECT span_id AS id, input, output
+      FROM spans_extracted
+      ORDER BY extracted_at DESC
     `;
     
     const result = await pool.query(query);
@@ -33,7 +33,7 @@ export const getTraceById = async (id: string) => {
   try {
     const query = `
       SELECT id, input, output
-      FROM traces
+      FROM spans_extracted
       WHERE id = $1
     `;
 
@@ -63,7 +63,7 @@ export const getTraceById = async (id: string) => {
 export const deleteTraceById = async (id: string): Promise<Trace | void> => {
   try {
     const query = `
-      DELETE FROM traces
+      DELETE FROM spans_extracted
       WHERE id = $1
       RETURNING id, input, output
     `;

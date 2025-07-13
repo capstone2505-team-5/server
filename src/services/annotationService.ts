@@ -15,7 +15,7 @@ export class AnnotationNotFoundError extends Error {
 export const getAllAnnotations = async (): Promise<Annotation[]> => {
   try {
     const query = `
-      SELECT id, trace_id, note, rating 
+      SELECT id, span_id, note, rating 
       FROM annotations 
       ORDER BY created_at DESC
     `;
@@ -24,7 +24,7 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
     
     return result.rows.map(row => ({
       id: row.id,
-      traceId: row.trace_id,
+      traceId: row.span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -39,12 +39,12 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
 export const getAnnotationById = async (id: string): Promise<Annotation> => {
   try {
     const query = `
-      SELECT id, trace_id, note, rating 
+      SELECT id, span_id, note, rating 
       FROM annotations 
       WHERE id = $1
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; rating: Rating, note: string }>(query, [id]);
+    const result = await pool.query<{ id: string; span_id: string; rating: Rating, note: string }>(query, [id]);
 
     if (result.rows.length === 0) {
       throw new AnnotationNotFoundError(id)
@@ -53,7 +53,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.trace_id,
+      traceId: row.span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -75,12 +75,12 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
 
   try {
     const query = `
-      INSERT INTO annotations (id, trace_id, note, rating)
+      INSERT INTO annotations (id, span_id, note, rating)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, trace_id, note, rating
+      RETURNING id, span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; note: string; rating: Rating }>(
+    const result = await pool.query<{ id: string; span_id: string; note: string; rating: Rating }>(
       query,
       [id, traceId, note, rating]
     );
@@ -89,7 +89,7 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
 
     return {
       id: row.id,
-      traceId: row.trace_id,
+      traceId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: []
@@ -126,10 +126,10 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
       UPDATE annotations
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, trace_id, note, rating
+      RETURNING id, span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; note: string; rating: Rating }>(
+    const result = await pool.query<{ id: string; span_id: string; note: string; rating: Rating }>(
       query,
       values
     );
@@ -142,7 +142,7 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
 
     return {
       id: row.id,
-      traceId: row.trace_id,
+      traceId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: [] // You can customize this if you're supporting categories
@@ -163,7 +163,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     const query = `
       DELETE FROM annotations
       WHERE id = $1
-      RETURNING id, trace_id, note, rating
+      RETURNING id, span_id, note, rating
     `;
 
     const result = await pool.query(query, [id]);
@@ -175,7 +175,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.trace_id,
+      traceId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: []

@@ -23,8 +23,8 @@ export const initializePostgres = async () => {
         start_time TIMESTAMP WITH TIME ZONE,
         end_time TIMESTAMP WITH TIME ZONE,
         context JSONB,
-        input_last_content TEXT,
-        output_last_content TEXT,
+        input TEXT,
+        output TEXT,
         extracted_at TIMESTAMP DEFAULT NOW(),
         source_updated_at TIMESTAMP DEFAULT NOW()
       );
@@ -94,8 +94,8 @@ export const initializePostgres = async () => {
             start_time,
             end_time,
             context,
-            input_last_content,
-            output_last_content,
+            input,
+            output,
             source_updated_at
           )
           VALUES (
@@ -115,8 +115,8 @@ export const initializePostgres = async () => {
             start_time = EXCLUDED.start_time,
             end_time = EXCLUDED.end_time,
             context = EXCLUDED.context,
-            input_last_content = EXCLUDED.input_last_content,
-            output_last_content = EXCLUDED.output_last_content,
+            input = EXCLUDED.input,
+            output = EXCLUDED.output,
             source_updated_at = NOW(),
             extracted_at = NOW();
             
@@ -155,8 +155,8 @@ export const initializePostgres = async () => {
         start_time,
         end_time,
         context,
-        input_last_content,
-        output_last_content,
+        input,
+        output,
         source_updated_at
       )
       SELECT 
@@ -166,8 +166,8 @@ export const initializePostgres = async () => {
         spans.start_time,
         spans.end_time,
         input_array AS context,
-        input_array->(jsonb_array_length(input_array) - 1)->>'content' AS input_last_content,
-        output_array->(jsonb_array_length(output_array) - 1)->>'content' AS output_last_content,
+        input_array->(jsonb_array_length(input_array) - 1)->>'content' AS input,
+        output_array->(jsonb_array_length(output_array) - 1)->>'content' AS output,
         NOW() AS source_updated_at
       FROM spans
       JOIN traces ON spans.trace_rowid = traces.id
