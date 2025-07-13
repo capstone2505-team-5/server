@@ -23,3 +23,19 @@ export type NewAnnotation = Omit<Annotation, 'id' | 'categories'>
 export type CreateAnnotationRequest = Pick<Annotation, 'note' | 'traceId'> & {
   rating?: Rating;
 };
+
+export interface CategorizedTrace {
+  traceId: string;
+  categories: string[];
+}
+
+export interface CategoryWithId {
+  id: string;
+  text: string;
+}
+
+export interface CategorizedAnnotation {
+  id: string;
+  annotation_id: string;
+  category_id: string;
+}

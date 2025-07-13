@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { categorizeTraces, getTraces, getTrace, deleteTrace } from "../controllers/traceController";
-import { getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
+import { getTraces, getTrace, deleteTrace } from "../controllers/traceController";
+import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 
 // import from controllers here
 
@@ -30,7 +30,7 @@ router.get('/annotations/:id', getAnnotation);
 router.post('/annotations', createAnnotation);
 
 // POST /api/categorize - Create categories, add to annotations, return traceId/categories
-router.post('/categorize', categorizeTraces);
+router.post('/categorize', categorizeAnnotations);
 
 // Patch /api/annotations/:id - Patch a single annotation by id
 router.patch('/annotations/:id', updateAnnotation);
