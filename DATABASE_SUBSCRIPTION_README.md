@@ -78,3 +78,5 @@ SELECT COUNT(*) FROM traces;
 ```
 
 should be at least 2 projects, at least 12 spans
+
+make sure to update .env file with new `error_analysis_phoenix` database
