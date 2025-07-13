@@ -5,6 +5,7 @@ import { getAllTraces } from "../services/traceService";
 import { openai } from '../lib/openaiClient';
 import { addCategories } from '../services/categoryService';
 import { addCategoriesToAnnotations } from '../services/annotationCategoriesService';
+import { OpenAIError } from '../errors/errors';
 
 export const getAnnotations = async (req: Request, res: Response) => {
   try {
@@ -98,19 +99,33 @@ export const deleteAnnotation = async (req: Request, res: Response) => {
 
 export const categorizeAnnotations = async (req: Request, res: Response) => {
   try {
-    const fullAnnotations: Annotation[] = await getAllAnnotations();
-    const notes = pullNotes(fullAnnotations);
+    const allAnnotations = await getAllAnnotations();
+    const badAnnotations = allAnnotations.filter(a => a.rating === 'bad');
+
+    if (badAnnotations.length === 0) {
+      res.sendStatus(204);
+      return;
+    }
+
+    const notes = pullNotes(badAnnotations);
+    const notesWithTraceIds = pullNotesWithTraceId(badAnnotations);
     const categories = await createCategories(notes);
     const categoriesWithIds = await addCategories(categories);
-    const categorizedTraces = await getCategorizedTraces(categories, pullNotesWithTraceId(fullAnnotations));
-    await addCategoriesToAnnotations(categoriesWithIds, fullAnnotations, categorizedTraces);
-    res.json(categorizedTraces);
+    const categorizedTraces = await getCategorizedTraces(
+      categories, 
+      notesWithTraceIds,
+    );
+    await addCategoriesToAnnotations(
+      categoriesWithIds, 
+      badAnnotations, 
+      categorizedTraces
+    );
+    res.status(201).json(categorizedTraces);
   } catch (err) {
     console.error(err);
-    throw err;
+    res.status(400);
   }
 };
-
 
 const createCategories = async (notes: string[]): Promise<string[]> => {
   const systemPrompt = `
@@ -120,16 +135,26 @@ const createCategories = async (notes: string[]): Promise<string[]> => {
   Example: ["poor spelling","too much food temperature"]
   `.trim();
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    temperature: 0,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: notes.join('\n') },
-    ],
-  });
+  let raw: string;
+  try {
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: notes.join('\n') },
+        ],
+      },
+      { timeout: 15_000 },
+    );
 
-  const raw = completion.choices[0].message.content ?? '';
+    raw = completion.choices[0].message.content ?? '';
+  } catch (err) {
+    console.error(err);
+    throw new OpenAIError('OpenAI request failed');
+  }
+
   const clean = raw
     .replace(/```json\s*([\s\S]*?)```/i, '$1')
     .replace(/```([\s\S]*?)```/i, '$1')
@@ -137,7 +162,8 @@ const createCategories = async (notes: string[]): Promise<string[]> => {
 
   try {
     const arr = JSON.parse(clean);
-    if (!Array.isArray(arr)) throw new Error('Not an array');
+    if (!Array.isArray(arr)) throw new Error('Wrong Datatype from ChatGPT');
+    if (arr.length < 1) throw new Error('No categories provided from LLM');
     return arr;
   } catch (e) {
     console.error('Bad JSON from model:', clean);
@@ -146,17 +172,13 @@ const createCategories = async (notes: string[]): Promise<string[]> => {
 };
 
 const pullNotes = (fullAnnotations: Annotation[]): string[] => {
-  return fullAnnotations.filter(annotation => {
-    return annotation.rating === 'bad';
-  }).map(annotation => {
+  return fullAnnotations.map(annotation => {
     return annotation.note;
   });
 };
 
 const pullNotesWithTraceId = (fullAnnotations: Annotation[]): string[] => {
-  return fullAnnotations.filter(annotation => {
-    return annotation.rating === 'bad';
-  }).map(annotation => {
+  return fullAnnotations.map(annotation => {
     return `${annotation.note}\ntraceID: ${annotation.traceId}`;
   });
 };
@@ -183,16 +205,26 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
 
   const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithTraceId.join('\n')}`;
 
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    temperature: 0,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userContent },
-    ],
-  });
+  let raw: string;
+  try {
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userContent },
+        ],
+      }, 
+      { timeout: 15_000 },
+    );
+    raw = completion.choices[0].message.content ?? '';
+  } catch (err) {
+    console.error(err);
+    throw new OpenAIError('OpenAI request failed');
+  }
 
-  const raw = completion.choices[0].message.content ?? '';
+
   const clean = raw
     .replace(/```json\s*([\s\S]*?)```/i, '$1')
     .replace(/```([\s\S]*?)```/i, '$1')
@@ -201,6 +233,9 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
   try {
     const arr = JSON.parse(clean);
     if (!Array.isArray(arr)) throw new Error('Not an array');
+    if (arr.length < notesWithTraceId.length) {
+      throw new OpenAIError('Not enough traces categorized');
+    }
     return arr;
   } catch (e) {
     console.error('Bad JSON from model:', clean);

@@ -31,7 +31,7 @@ export const initializePostgres = async () => {
 
       CREATE TABLE IF NOT EXISTS categories (
         id VARCHAR(50) PRIMARY KEY,
-        text TEXT UNIQUE
+        text TEXT
       );
 
       CREATE TABLE IF NOT EXISTS annotation_categories (

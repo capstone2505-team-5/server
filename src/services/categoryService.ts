@@ -17,7 +17,6 @@ export const addCategories = async (categories: string[]): Promise<CategoryWithI
     const query = `
         INSERT INTO categories (id, text)
         VALUES ${placeholders.join(', ')}
-        ON CONFLICT (text) DO NOTHING
         RETURNING id, text
     `;
 

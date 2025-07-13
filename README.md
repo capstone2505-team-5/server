@@ -14,10 +14,6 @@ To setup PSQL DB:
     PGPORT=5432
 - Run the server and it will create the tables for you.
 
-If you dont want to delete your database and make it again:
-ALTER TABLE categories
-ADD CONSTRAINT categories_text_key UNIQUE (text);
-
 API Endpoints:
 
 GET /api/traces
