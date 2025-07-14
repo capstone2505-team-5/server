@@ -17,7 +17,7 @@ export const initializePostgres = async () => {
     await pool.query(`
       -- Create the extracted data table
       CREATE TABLE IF NOT EXISTS spans_extracted (
-        span_id VARCHAR PRIMARY KEY,
+        id VARCHAR PRIMARY KEY,
         trace_id VARCHAR,
         project_name VARCHAR,
         start_time TIMESTAMP WITH TIME ZONE,
@@ -25,22 +25,20 @@ export const initializePostgres = async () => {
         context JSONB,
         input TEXT,
         output TEXT,
-        extracted_at TIMESTAMP DEFAULT NOW(),
-        source_updated_at TIMESTAMP DEFAULT NOW()
+        extracted_at TIMESTAMP DEFAULT NOW()
       );
 
       -- Create indexes for performance (IF NOT EXISTS handles existing indexes)
       CREATE INDEX IF NOT EXISTS idx_spans_extracted_trace_id ON spans_extracted(trace_id);
       CREATE INDEX IF NOT EXISTS idx_spans_extracted_project ON spans_extracted(project_name);
       CREATE INDEX IF NOT EXISTS idx_spans_extracted_start_time ON spans_extracted(start_time);
-      CREATE INDEX IF NOT EXISTS idx_spans_extracted_updated ON spans_extracted(source_updated_at);
     `);
 
     // Create other tables first (before populating spans_extracted)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS annotations (
         id VARCHAR(50) PRIMARY KEY,
-        span_id VARCHAR(50) REFERENCES spans_extracted(span_id) ON DELETE CASCADE,
+        span_id VARCHAR(50) REFERENCES spans_extracted(id) ON DELETE CASCADE,
         note TEXT,
         rating TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
@@ -88,15 +86,14 @@ export const initializePostgres = async () => {
           
           -- Insert or update the extracted data
           INSERT INTO spans_extracted (
-            span_id,
+            id,
             trace_id,
             project_name,
             start_time,
             end_time,
             context,
             input,
-            output,
-            source_updated_at
+            output
           )
           VALUES (
             NEW.span_id,
@@ -106,10 +103,9 @@ export const initializePostgres = async () => {
             NEW.end_time,
             input_array,
             input_array->(jsonb_array_length(input_array) - 1)->>'content',
-            output_array->(jsonb_array_length(output_array) - 1)->>'content',
-            NOW()
+            output_array->(jsonb_array_length(output_array) - 1)->>'content'
           )
-          ON CONFLICT (span_id) DO UPDATE SET
+          ON CONFLICT (id) DO UPDATE SET
             trace_id = EXCLUDED.trace_id,
             project_name = EXCLUDED.project_name,
             start_time = EXCLUDED.start_time,
@@ -117,12 +113,11 @@ export const initializePostgres = async () => {
             context = EXCLUDED.context,
             input = EXCLUDED.input,
             output = EXCLUDED.output,
-            source_updated_at = NOW(),
             extracted_at = NOW();
             
         ELSE
           -- If attributes don't match criteria, remove from extracted table if it exists
-          DELETE FROM spans_extracted WHERE span_id = NEW.span_id;
+          DELETE FROM spans_extracted WHERE id = NEW.span_id;
         END IF;
         
         RETURN NEW;
@@ -149,15 +144,14 @@ export const initializePostgres = async () => {
     // Repopulate with all current data
     const populationResult = await pool.query(`
       INSERT INTO spans_extracted (
-        span_id,
+        id,
         trace_id,
         project_name,
         start_time,
         end_time,
         context,
         input,
-        output,
-        source_updated_at
+        output
       )
       SELECT 
         spans.span_id,
@@ -167,8 +161,7 @@ export const initializePostgres = async () => {
         spans.end_time,
         input_array AS context,
         input_array->(jsonb_array_length(input_array) - 1)->>'content' AS input,
-        output_array->(jsonb_array_length(output_array) - 1)->>'content' AS output,
-        NOW() AS source_updated_at
+        output_array->(jsonb_array_length(output_array) - 1)->>'content' AS output
       FROM spans
       JOIN traces ON spans.trace_rowid = traces.id
       JOIN projects ON traces.project_rowid = projects.id

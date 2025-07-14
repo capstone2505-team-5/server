@@ -1,17 +1,17 @@
 import { pool } from "../db/postgres";
-import { Trace } from "../types/types";
+import { Span } from "../types/types";
 
-export class TraceNotFoundError extends Error {
+export class SpanNotFoundError extends Error {
   constructor(id: string) {
-    super(`Trace with id ${id} not found`);
-    this.name = 'TraceNotFoundError';
+    super(`Span with id ${id} not found`);
+    this.name = 'SpanNotFoundError';
   }
 }
 
-export const getAllTraces = async (): Promise<Trace[]> => {
+export const getAllSpans = async (): Promise<Span[]> => {
   try {
     const query = `
-      SELECT span_id AS id, input, output
+      SELECT id, input, output
       FROM spans_extracted
       ORDER BY extracted_at DESC
     `;
@@ -20,16 +20,22 @@ export const getAllTraces = async (): Promise<Trace[]> => {
     
     return result.rows.map(row => ({
       id: row.id,
+      trace_id: row.trace_id,
+      project_name: row.project_name,
       input: row.input,
-      output: row.output
+      output: row.output,
+      start_time: row.start_time,
+      end_time: row.end_time,
+      context: row.context,
+      extracted_at: row.extracted_at,
     }));
   } catch (error) {
-    console.error('Error fetching traces:', error);
-    throw new Error('Failed to fetch traces from database');
+    console.error('Error fetching spans:', error);
+    throw new Error('Failed to fetch spans from database');
   }
 };
 
-export const getTraceById = async (id: string) => {
+export const getSpanById = async (id: string) => {
   try {
     const query = `
       SELECT id, input, output
@@ -40,7 +46,7 @@ export const getTraceById = async (id: string) => {
     const result = await pool.query<{ id: string; input: string; output: string }>(query, [id]);
 
     if (result.rows.length === 0) {
-      throw new TraceNotFoundError(id)
+      throw new SpanNotFoundError(id)
     }
 
     const row = result.rows[0];
@@ -50,17 +56,17 @@ export const getTraceById = async (id: string) => {
       output: row.output,
     };
   } catch (error) {
-    console.error(`Error fetching trace with id ${id}:`, error);
+    console.error(`Error fetching span with id ${id}:`, error);
 
-    if (error instanceof TraceNotFoundError) {
+    if (error instanceof SpanNotFoundError) {
       throw error;
     }
 
-    throw new Error(`Database error while fetching trace with id ${id}`);
+    throw new Error(`Database error while fetching span with id ${id}`);
   }
 }
 
-export const deleteTraceById = async (id: string): Promise<Trace | void> => {
+export const deleteSpanById = async (id: string): Promise<Span | void> => {
   try {
     const query = `
       DELETE FROM spans_extracted
@@ -71,22 +77,28 @@ export const deleteTraceById = async (id: string): Promise<Trace | void> => {
     const result = await pool.query(query, [id]);
 
     if (result.rowCount === 0) {
-      throw new TraceNotFoundError(id);
+      throw new SpanNotFoundError(id);
     }
 
     const row = result.rows[0];
     return {
       id: row.id,
+      trace_id: row.trace_id,
+      project_name: row.project_name,
       input: row.input,
       output: row.output,
+      start_time: row.start_time,
+      end_time: row.end_time,
+      context: row.context,
+      extracted_at: row.extracted_at,
     }
   } catch (error) {
-    console.error(`Error deleting trace with id ${id}:`, error);
+    console.error(`Error deleting span with id ${id}:`, error);
 
-    if (error instanceof TraceNotFoundError) {
+    if (error instanceof SpanNotFoundError) {
       throw error;
     }
 
-    throw new Error(`Database error while deleting trace with id ${id}`);
+    throw new Error(`Database error while deleting span with id ${id}`);
   }
 }

@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class AnnotationNotFoundError extends Error {
   constructor(id: string) {
-    super(`Trace with id ${id} not found`);
-    this.name = 'TraceNotFoundError';
+    super(`Annotation with id ${id} not found`);
+    this.name = 'AnnotationNotFoundError';
   }
 }
 
@@ -24,7 +24,7 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
     
     return result.rows.map(row => ({
       id: row.id,
-      traceId: row.span_id,
+      spanId: row.span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -53,7 +53,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.span_id,
+      spanId: row.span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -70,7 +70,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 }
 
 export const createNewAnnotation = async (annotation: NewAnnotation) => {
-  const { traceId, note, rating } = annotation;
+  const { spanId, note, rating } = annotation;
   const id = uuidv4();
 
   try {
@@ -82,14 +82,14 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
 
     const result = await pool.query<{ id: string; span_id: string; note: string; rating: Rating }>(
       query,
-      [id, traceId, note, rating]
+      [id, spanId, note, rating]
     );
 
     const row = result.rows[0];
 
     return {
       id: row.id,
-      traceId: row.span_id,
+      spanId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: []
@@ -142,7 +142,7 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
 
     return {
       id: row.id,
-      traceId: row.span_id,
+      spanId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: [] // You can customize this if you're supporting categories
@@ -175,7 +175,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.span_id,
+      spanId: row.span_id,
       note: row.note,
       rating: row.rating,
       categories: []

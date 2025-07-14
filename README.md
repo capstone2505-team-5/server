@@ -16,28 +16,40 @@ To setup PSQL DB:
 
 API Endpoints:
 
-GET /api/traces
+GET /api/spans
 Response:
 [
   {
-    id: string;
+    span_id: string;
+    trace_id: string;
+    project_name: string;
     input: string;
     output: string;
+    start_time: string; // TIMESTAMPTZ
+    end_time: string; // TIMESTAMPTZ
+    context: Record<string, any>; // parsed JSONB object
+    extracted_at: string; // timestamp - when extracted into spans_extracted table from phoenix spans
   }
 ]
 
-GET /api/traces/:id
+GET /api/spans/:id
 Response:
 {
-  id: string;
+  span_id: string;
+  trace_id: string;
+  project_name: string;
   input: string;
   output: string;
+  start_time: string; // TIMESTAMPTZ
+  end_time: string; // TIMESTAMPTZ
+  context: Record<string, any>; // parsed JSONB object
+  extracted_at: string; // timestamp - when extracted into spans_extracted table from phoenix spans
 }
 
-DELETE /api/traces/:id
+DELETE /api/spans/:id
 Response:
 {
-  message: "Trace deleted successfully",
+  message: "Span deleted successfully",
   deletedAnnotation: {
     id: string;
     input: string;
@@ -50,7 +62,7 @@ Response:
 [
   {
     id: string;
-    traceId: string;
+    spanId: string;
     note: string;
     rating: Rating;
     categories: string[];
@@ -61,7 +73,7 @@ GET /api/annotations/:id
 Response:
 {
   id: string;
-  traceId: string;
+  spanId: string;
   note: string;
   rating: Rating;
   categories: string[];
@@ -70,14 +82,14 @@ Response:
 POST /api/annotations
 Request Body:
 {
-  traceId: string;
+  spanId: string;
   note: string;
   rating?: Rating;
 }
 Response:
 {
   id: string;
-  traceId: string;
+  spanId: string;
   note: string;
   rating: Rating;
   categories: string[];

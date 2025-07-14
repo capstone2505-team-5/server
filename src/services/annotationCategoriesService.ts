@@ -1,8 +1,8 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
-import type { CategorizedAnnotation, CategorizedTrace, CategoryWithId, Annotation } from '../types/types';
+import type { CategorizedAnnotation, CategorizedSpan, CategoryWithId, Annotation } from '../types/types';
 
-export const addCategoriesToAnnotations = async (categoriesWithIds: CategoryWithId[], fullAnnotations: Annotation[], categorizedTraces: CategorizedTrace[]): Promise<CategorizedAnnotation[]> => {
+export const addCategoriesToAnnotations = async (categoriesWithIds: CategoryWithId[], fullAnnotations: Annotation[], categorizedSpans: CategorizedSpan[]): Promise<CategorizedAnnotation[]> => {
   try {
     const catMap = mapCategories(categoriesWithIds);
     const annMap = mapAnnotations(fullAnnotations);
@@ -11,8 +11,8 @@ export const addCategoriesToAnnotations = async (categoriesWithIds: CategoryWith
     const placeholders: string[] = [];
     let index = 1;
 
-    categorizedTraces.forEach(({ traceId, categories }) => {
-      const annId = annMap.get(traceId);
+    categorizedSpans.forEach(({ spanId, categories }) => {
+      const annId = annMap.get(spanId);
       categories.forEach(category => {
         const catId = catMap.get(category); 
         const id = uuidv4();
@@ -44,8 +44,8 @@ const mapCategories = (categoriesWithIds: CategoryWithId[]): Map<string, string>
 };
 
 const mapAnnotations = (fullAnnotations: Annotation[]): Map<string, string> => {
-    return new Map(fullAnnotations.map(({ traceId, id }) => {
-      return [traceId, id] as const;
+    return new Map(fullAnnotations.map(({ spanId, id }) => {
+      return [spanId, id] as const;
     })
   );
 }

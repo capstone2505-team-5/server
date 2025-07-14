@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
-import { CreateAnnotationRequest, Annotation, CategorizedTrace } from "../types/types";
-import { getAllTraces } from "../services/traceService";
+import { CreateAnnotationRequest, Annotation, CategorizedSpan } from "../types/types";
+import { getAllSpans } from "../services/traceService";
 import { openai } from '../lib/openaiClient';
 import { addCategories } from '../services/categoryService';
 import { addCategoriesToAnnotations } from '../services/annotationCategoriesService';
@@ -32,25 +32,25 @@ export const getAnnotation = async (req: Request, res: Response) => {
 
 export const createAnnotation = async (req: Request, res: Response) => {
   try {
-    const { traceId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
+    const { spanId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
     
     // Validate required fields
-    if (!traceId || !note) {
-      res.status(400).json({ error: 'traceId and note are required' });
+    if (!spanId || !note) {
+      res.status(400).json({ error: 'spanId and note are required' });
       return
     }
     
-    // Check if trace exists
-    const traces = await getAllTraces()
+    // Check if span exists
+    const spans = await getAllSpans()
 
-    const traceExists = traces.find(t => t.id === traceId);
-    if (!traceExists) {
-      res.status(404).json({ error: 'Trace not found' });
+    const spanExists = spans.find(s => s.id === spanId);
+    if (!spanExists) {
+      res.status(404).json({ error: 'Span not found' });
       return
     }
 
     // should replace this with a service to get next ID probably
-    const annotation = await createNewAnnotation({traceId, note, rating})
+    const annotation = await createNewAnnotation({spanId, note, rating})
         
     res.status(201).json(annotation);
   } catch (error) {
@@ -108,19 +108,19 @@ export const categorizeAnnotations = async (req: Request, res: Response) => {
     }
 
     const notes = pullNotes(badAnnotations);
-    const notesWithTraceIds = pullNotesWithTraceId(badAnnotations);
+    const notesWithSpanIds = pullNotesWithSpanId(badAnnotations);
     const categories = await createCategories(notes);
     const categoriesWithIds = await addCategories(categories);
-    const categorizedTraces = await getCategorizedTraces(
+    const categorizedSpans = await getCategorizedSpans(
       categories, 
-      notesWithTraceIds,
+      notesWithSpanIds,
     );
     await addCategoriesToAnnotations(
       categoriesWithIds, 
       badAnnotations, 
-      categorizedTraces
+      categorizedSpans
     );
-    res.status(201).json(categorizedTraces);
+    res.status(201).json(categorizedSpans);
   } catch (err) {
     console.error(err);
     res.status(400);
@@ -177,33 +177,33 @@ const pullNotes = (fullAnnotations: Annotation[]): string[] => {
   });
 };
 
-const pullNotesWithTraceId = (fullAnnotations: Annotation[]): string[] => {
+const pullNotesWithSpanId = (fullAnnotations: Annotation[]): string[] => {
   return fullAnnotations.map(annotation => {
-    return `${annotation.note}\ntraceID: ${annotation.traceId}`;
+    return `${annotation.note}\nspanID: ${annotation.spanId}`;
   });
 };
 
-const getCategorizedTraces = async (categories: string[], notesWithTraceId: string[]): Promise<CategorizedTrace[]> => {
+const getCategorizedSpans = async (categories: string[], notesWithSpanId: string[]): Promise<CategorizedSpan[]> => {
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   You are provided a list of error categories.
   The categories represent different types of errors that could apply to a note.
-  Then you are provided a list of notes and their traceIds.
-  The traceID will always follow the note that it is attached to on a new line.
+  Then you are provided a list of notes and their spanIds.
+  The spanID will always follow the note that it is attached to on a new line.
   Your job is to figure out which categories are relevant for each note.
   Multiple categories might apply to one note.  
   Return ONLY a valid JSON array of objects, no markdown fences.
-  Each object will have a traceId property and an array of cateogires.
+  Each object will have a spanId property and an array of cateogires.
   Example: [
-    {traceId: "SYN018", categories: ["spelling", "speed"]},
-    {traceId: "SYN019", categories: ["spelling", "attitude"]},
-    {traceId: "SYN021", categories: ["spelling", "speed"]},
-    {traceId: "SYN008", categories: ["speed"]},
+    {spanId: "SYN018", categories: ["spelling", "speed"]},
+    {spanId: "SYN019", categories: ["spelling", "attitude"]},
+    {spanId: "SYN021", categories: ["spelling", "speed"]},
+    {spanId: "SYN008", categories: ["speed"]},
   ];
 };
   `.trim();
 
-  const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithTraceId.join('\n')}`;
+  const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithSpanId.join('\n')}`;
 
   let raw: string;
   try {
@@ -233,8 +233,8 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
   try {
     const arr = JSON.parse(clean);
     if (!Array.isArray(arr)) throw new Error('Not an array');
-    if (arr.length < notesWithTraceId.length) {
-      throw new OpenAIError('Not enough traces categorized');
+    if (arr.length < notesWithSpanId.length) {
+      throw new OpenAIError('Not enough span categorized');
     }
     return arr;
   } catch (e) {
