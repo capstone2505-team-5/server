@@ -29,7 +29,7 @@ export interface CategorizedTrace {
   categories: string[];
 }
 
-export interface CategoryWithId {
+export interface Category {
   id: string;
   text: string;
 }
