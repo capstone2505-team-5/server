@@ -1,13 +1,16 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { CategorizedAnnotation, CategorizedTrace, Category, Annotation } from '../types/types';
-import { getAllAnnotations } from '../services/annotationService';
+import { getAllAnnotations } from './annotationService';
 import { openai } from '../lib/openaiClient';
-import { addCategories } from '../services/categoryService';
+import { addCategories } from './categoryService';
 import { OpenAIError } from '../errors/errors';
+import { jsonCleanup } from '../utils/jsonCleanup'
 
 export const categorizeBadAnnotations = async () => {
   try {
+    await resetCategoryTables();    // ← dev-only wipe
+
     const allAnnotations = await getAllAnnotations();
     const badAnnotations = allAnnotations.filter(a => a.rating === 'bad');
 
@@ -32,6 +35,25 @@ export const categorizeBadAnnotations = async () => {
   } catch (err) {
     console.error(err);
     throw err;
+  }
+};
+
+/**
+ * Danger-zone helper: clears all category data.
+ * Call only in non-prod environments.
+ */
+const resetCategoryTables = async (): Promise<void> => {
+  // Wrap in a transaction for safety
+  await pool.query('BEGIN');
+  try {
+    // 1) delete join rows first to satisfy FK constraints
+    await pool.query('DELETE FROM annotation_categories');
+    // 2) now delete category definitions
+    await pool.query('DELETE FROM categories');
+    await pool.query('COMMIT');
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
   }
 };
 
@@ -117,15 +139,13 @@ const createCategories = async (notes: string[]): Promise<string[]> => {
     throw new OpenAIError('OpenAI request failed');
   }
 
-  const clean = raw
-    .replace(/```json\s*([\s\S]*?)```/i, '$1')
-    .replace(/```([\s\S]*?)```/i, '$1')
-    .trim();
+  const clean = jsonCleanup(raw);
 
   try {
     const arr = JSON.parse(clean);
     if (!Array.isArray(arr)) throw new Error('Wrong Datatype from ChatGPT');
     if (arr.length < 1) throw new Error('No categories provided from LLM');
+    console.log(arr);
     return arr;
   } catch (e) {
     console.error('Bad JSON from model:', clean);
@@ -157,10 +177,10 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
   Return ONLY a valid JSON array of objects, no markdown fences.
   Each object will have a traceId property and an array of cateogires.
   Example: [
-    {traceId: "SYN018", categories: ["spelling", "speed"]},
-    {traceId: "SYN019", categories: ["spelling", "attitude"]},
-    {traceId: "SYN021", categories: ["spelling", "speed"]},
-    {traceId: "SYN008", categories: ["speed"]},
+    {"traceId": "SYN018", "categories": ["spelling", "speed"]},
+    {"traceId": "SYN019", "categories": ["spelling", "attitude"]},
+    {"traceId": "SYN021", "categories": ["spelling", "speed"]},
+    {"traceId": "SYN008", "categories": ["speed"]},
   ];
 };
   `.trim();
@@ -186,11 +206,7 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
     throw new OpenAIError('OpenAI request failed');
   }
 
-
-  const clean = raw
-    .replace(/```json\s*([\s\S]*?)```/i, '$1')
-    .replace(/```([\s\S]*?)```/i, '$1')
-    .trim();
+  const clean = jsonCleanup(raw);
 
   try {
     const arr = JSON.parse(clean);

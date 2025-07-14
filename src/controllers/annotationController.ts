@@ -3,7 +3,7 @@ import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, get
 import { CreateAnnotationRequest, Annotation, CategorizedTrace } from "../types/types";
 import { getAllTraces } from "../services/traceService";
 
-import { categorizeBadAnnotations } from '../services/annotationCategoryService';
+import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
 
 
 export const getAnnotations = async (req: Request, res: Response) => {
