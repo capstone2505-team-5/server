@@ -106,7 +106,7 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
     const values = [];
     let paramIndex = 1;
 
-        if (updates.note !== undefined) {
+    if (updates.note !== undefined) {
       fields.push(`note = $${paramIndex++}`);
       values.push(updates.note);
     }

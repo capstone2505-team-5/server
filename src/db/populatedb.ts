@@ -3,9 +3,23 @@ import { pool } from "./postgres"
 import { mockAnnotations } from "./mockData";
 
 export async function populateAllMockData() {
-  await populateTracesTable()
-  await populateAnnotationsTable()
+  await resetAnnotationTable(); //dev mode only
+  await populateTracesTable();
+  await populateAnnotationsTable();
 }
+
+// dev mode only ... lets you easily start with new annotations each time
+const resetAnnotationTable = async (): Promise<void> => {
+  // Wrap in a transaction for safety
+  await pool.query('BEGIN');
+  try {
+    await pool.query('DELETE FROM annotations');
+    await pool.query('COMMIT');
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  }
+};
 
 async function populateTracesTable(): Promise<void> {
   const client = await pool.connect();

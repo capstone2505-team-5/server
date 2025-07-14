@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
-import { CreateAnnotationRequest, Annotation, Rating } from "../types/types";
+import { CreateAnnotationRequest, Annotation, CategorizedTrace } from "../types/types";
 import { getAllTraces } from "../services/traceService";
+
+import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
+
 
 export const getAnnotations = async (req: Request, res: Response) => {
   try {
@@ -92,3 +95,13 @@ export const deleteAnnotation = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete annotation' });
   }
 }
+
+export const categorizeAnnotations = async (_req: Request, res: Response) => {
+  try {
+    const result = await categorizeBadAnnotations();
+    res.status(201).json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Categorization failed' });
+  }
+};
