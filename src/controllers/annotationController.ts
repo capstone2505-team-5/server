@@ -33,7 +33,13 @@ export const createAnnotation = async (req: Request, res: Response) => {
   try {
     const { traceId, rating, note = '' }: CreateAnnotationRequest = req.body;
     
-    if (rating && rating !== 'good' && rating !== 'bad') {
+    // Validate required fields
+    if (!traceId || !rating) {
+      res.status(400).json({ error: 'traceId and rating are both required' });
+      return
+    }
+
+    if (rating !== 'good' && rating !== 'bad') {
       res.status(400).json({ error: 'rating must be either "good" or "bad"' });
       return
     }
@@ -43,12 +49,6 @@ export const createAnnotation = async (req: Request, res: Response) => {
       return
     }
 
-    // Validate required fields
-    if (!traceId) {
-      res.status(400).json({ error: 'traceId is required' });
-      return
-    }
-    
     // Check if trace exists
     const traces = await getAllTraces()
 
@@ -71,12 +71,12 @@ export const updateAnnotation = async (req: Request, res: Response) => {
     const { rating, note }: Annotation = req.body;
     
     // Validate that at least one field is provided for update
-    if (!rating && !note) {
-      res.status(400).json({ error: 'At least one field (note or rating) is required for update' });
+    if (!rating) {
+      res.status(400).json({ error: 'rating is required for update' });
       return;
     }
 
-    if (rating && rating !== 'good' && rating !== 'bad') {
+    if (rating !== 'good' && rating !== 'bad') {
       res.status(400).json({ error: 'rating must be either "good" or "bad"' });
       return
     }
