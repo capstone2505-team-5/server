@@ -39,3 +39,14 @@ export interface CategorizedAnnotation {
   annotation_id: string;
   category_id: string;
 }
+
+export interface RootSpan {
+  id: string;
+  traceId: string;
+  startTime: string;      // or Date
+  endTime: string;        // or Date
+  input: string;
+  output: string;
+  projectName: string;
+  spanName: string;
+}

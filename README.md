@@ -3,6 +3,8 @@ To run:
 2. npm run dev
 3. create .env file
 ---- OPENAI_API_KEY=sk-…your key…
+---- PHOENIX_API_KEY=your_phoenix_api_key
+---- PHOENIX_API_URL=your_phoenix_hostname
 
 To setup PSQL DB:
 - Make a database named error_analysis

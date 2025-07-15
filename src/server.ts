@@ -1,16 +1,21 @@
 import app from "./app";
 import config from "./config/config";
-import { populateAllMockData } from "./db/populatedb";
+import { populateAllMockData, populateRootSpansTable } from "./db/populatedb";
 import { initializePostgres } from "./db/postgres";
 import { pool } from "./db/postgres";
+import fetchRootSpansInputsOutputs from "./services/graphqlIngestion/fetchRootSpans";
 
 async function startServer() {
   await initializePostgres();
   await populateAllMockData();
   // Then start listening for requests
+  const rootSpans = await fetchRootSpansInputsOutputs();
+  await populateRootSpansTable(rootSpans);
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });
+
+
 }
 
 startServer().catch(err => {
