@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getTraces, getTrace, deleteTrace } from "../controllers/traceController";
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
-
+import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 // import from controllers here
 
 const router = Router()
@@ -16,6 +16,14 @@ router.get('/traces/:id', getTrace);
 
 // DELETE /api/traces/:id - Delete a single trace by id
 router.delete('/traces/:id', deleteTrace)
+
+// ROOT SPAN ROUTES
+
+// GET /api/traces - Get all traces
+router.get('/rootSpans', getRootSpans);
+
+// GET /api/traces/:id - Get a single trace by id
+router.get('/rootSpans/:id', getRootSpan);
 
 
 // ANNOTATIONS ROUTES
