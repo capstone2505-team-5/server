@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class AnnotationNotFoundError extends Error {
   constructor(id: string) {
-    super(`Trace with id ${id} not found`);
-    this.name = 'TraceNotFoundError';
+    super(`Annotation with id ${id} not found`);
+    this.name = 'AnnotationNotFoundError';
   }
 }
 
