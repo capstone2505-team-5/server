@@ -1,45 +1,58 @@
 import { RootSpan } from "../../types/types";
 
-const fetchRootSpansInputsOutputs = async () => {
-  console.log('Fetching root spans');
+const queryAPI = async (query: string, variables?: Record<string, any>) => {
+  const body: any = { query };
+  if (variables) {
+    body.variables = variables;
+  }
+
   const response = await fetch(process.env.PHOENIX_API_URL + '/graphql', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${process.env.PHOENIX_API_KEY}`
     },
-    body: JSON.stringify({
-      query: `{
-                projects(filter: {col: name, value: "recipe-chatbot-oneTrace"}) {
-                  edges {
-                    node {
-                      name
-                      spans(rootSpansOnly: true) {
-                        edges {
-                          node {
-                            context {
-                              spanId
-                              traceId
-                            }
-                            input {
-                              value
-                            }
-                            output {
-                              value
-                            }
-                            startTime
-                            endTime
-                            name
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }`
-    })
+    body: JSON.stringify(body)
   });
-  const data = await response.json();
+  return await response.json();
+};
+
+const fetchRootSpans = async (projectName?: string) => {
+  console.log('Fetching root spans');
+  
+  const query = 
+  `query RootSpans ($projectName: String!){
+    projects (filter: {col: name, value: $projectName}) {
+      edges {
+        node {
+          name
+          spans(rootSpansOnly: true) {
+            edges {
+              node {
+                context {
+                  spanId
+                  traceId
+                }
+                input {
+                  value
+                }
+                output {
+                  value
+                }
+                startTime
+                endTime
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }`
+
+  // If projectName is empty it will retreive all root spans!
+  const variables = projectName ? { projectName } : { projectName: "" } ;
+  const data = await queryAPI(query, variables);
   const formattedData = formatRootSpans(data);
   return formattedData;
 };
@@ -66,4 +79,4 @@ const formatRootSpans = (data: any): RootSpan[] => {
   });
 };
 
-export default fetchRootSpansInputsOutputs;
+export default fetchRootSpans;

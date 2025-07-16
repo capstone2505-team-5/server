@@ -3,13 +3,13 @@ import config from "./config/config";
 import { populateAllMockData, populateRootSpansTable } from "./db/populatedb";
 import { initializePostgres } from "./db/postgres";
 import { pool } from "./db/postgres";
-import fetchRootSpansInputsOutputs from "./services/graphqlIngestion/fetchRootSpans";
+import fetchRootSpans from "./services/graphqlIngestion/fetchRootSpans";
 
 async function startServer() {
   await initializePostgres();
   await populateAllMockData();
   // Then start listening for requests
-  const rootSpans = await fetchRootSpansInputsOutputs();
+  const rootSpans = await fetchRootSpans();
   await populateRootSpansTable(rootSpans);
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
