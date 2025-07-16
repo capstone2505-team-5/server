@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getTraces, getTrace, deleteTrace } from "../controllers/traceController";
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
+import { getProjects } from "../controllers/projectController";
 // import from controllers here
 
 const router = Router()
@@ -45,6 +46,10 @@ router.patch('/annotations/:id', updateAnnotation);
 
 // DELETE /api/annotation/:id - Delete a single annotation by id
 router.delete('/annotations/:id', deleteAnnotation)
+
+// PROJECT ROUTES
+// GET /api/projects - Get all projects
+router.get('/projects', getProjects)
 
 
 export default router

@@ -50,3 +50,9 @@ export interface RootSpan {
   projectName: string;
   spanName: string;
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+}
