@@ -47,6 +47,36 @@ Response:
   }
 }
 
+GET /api/rootSpans
+Response:
+[
+  {
+    id: string;
+    traceId: string;
+    startTime: string;
+    endTime: string;
+    input: string;
+    output: string;
+    projectName: string;
+    spanName: string;
+  }
+]
+
+GET /api/rootSpans/:id
+Response:
+{
+  id: string;
+  traceId: string;
+  startTime: string;
+  endTime: string;
+  input: string;
+  output: string;
+  projectName: string;
+  spanName: string;
+}
+
+
+
 GET /api/annotations
 Response:
 [

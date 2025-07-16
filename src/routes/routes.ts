@@ -19,10 +19,10 @@ router.delete('/traces/:id', deleteTrace)
 
 // ROOT SPAN ROUTES
 
-// GET /api/traces - Get all traces
+// GET /api/rootSpans - Get all rootSpans
 router.get('/rootSpans', getRootSpans);
 
-// GET /api/traces/:id - Get a single trace by id
+// GET /api/rootSpans/:id - Get a single root span by id
 router.get('/rootSpans/:id', getRootSpan);
 
 
