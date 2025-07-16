@@ -8,9 +8,12 @@ import fetchRootSpans from "./services/graphqlIngestion/fetchRootSpans";
 async function startServer() {
   await initializePostgres();
   await populateAllMockData();
-  // Then start listening for requests
+  
   const rootSpans = await fetchRootSpans();
-  await populateRootSpansTable(rootSpans);
+  if(rootSpans){
+    await populateRootSpansTable(rootSpans);
+  }
+  
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });

@@ -2,61 +2,80 @@ import { RootSpan } from "../../types/types";
 
 const queryAPI = async (query: string, variables?: Record<string, any>) => {
   const body: any = { query };
-  if (variables) {
-    body.variables = variables;
-  }
+  if (variables) body.variables = variables;
 
-  const response = await fetch(process.env.PHOENIX_API_URL + '/graphql', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.PHOENIX_API_KEY}`
-    },
-    body: JSON.stringify(body)
-  });
-  return await response.json();
+  try {
+    const response = await fetch(process.env.PHOENIX_API_URL + '/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PHOENIX_API_KEY}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (data.errors) {
+      throw new Error(`GraphQL error: ${JSON.stringify(data.errors)}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in queryAPI:', error);
+    throw error; // rethrow so the caller can handle it if needed
+  }
 };
 
 const fetchRootSpans = async (projectName?: string) => {
-  console.log('Fetching root spans');
+  try {
+    console.log('Fetching root spans');
   
-  const query = 
-  `query RootSpans ($projectName: String!){
-    projects (filter: {col: name, value: $projectName}) {
-      edges {
-        node {
-          name
-          spans(rootSpansOnly: true) {
-            edges {
-              node {
-                context {
-                  spanId
-                  traceId
+    const query = 
+    `query RootSpans ($projectName: String!){
+      projects (filter: {col: name, value: $projectName}) {
+        edges {
+          node {
+            name
+            spans(rootSpansOnly: true) {
+              edges {
+                node {
+                  context {
+                    spanId
+                    traceId
+                  }
+                  input {
+                    value
+                  }
+                  output {
+                    value
+                  }
+                  startTime
+                  endTime
+                  name
                 }
-                input {
-                  value
-                }
-                output {
-                  value
-                }
-                startTime
-                endTime
-                name
               }
             }
           }
         }
       }
-    }
-  }`
+    }`
 
-  // If projectName is empty it will retreive all root spans!
-  const variables = projectName ? { projectName } : { projectName: "" } ;
-  const data = await queryAPI(query, variables);
-  const formattedData = formatRootSpans(data);
-  return formattedData;
+    // If projectName is empty it will retreive all root spans!
+    const variables = projectName ? { projectName } : { projectName: "" } ;
+    const data = await queryAPI(query, variables);
+    const formattedData = formatRootSpans(data);
+    return formattedData;
+  } catch (error) {
+    console.error('Error in fetchRootSpans:', error);
+  }
 };
 
+// This is the formatting for our rootSpans where we want the content from the last object in an array.
 const formatRootSpans = (data: any): RootSpan[] => {
   return data.data.projects.edges.flatMap((project: any) => {
     return project.node.spans.edges.map((span: any) => {
