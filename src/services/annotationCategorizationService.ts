@@ -1,6 +1,6 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
-import type { CategorizedAnnotation, CategorizedTrace, Category, Annotation } from '../types/types';
+import type { CategorizedAnnotation, CategorizedRootSpan, Category, Annotation } from '../types/types';
 import { getAllAnnotations } from './annotationService';
 import { openai } from '../lib/openaiClient';
 import { addCategories } from './categoryService';
@@ -19,19 +19,19 @@ export const categorizeBadAnnotations = async () => {
     }
 
     const notes = pullNotes(badAnnotations);
-    const notesWithTraceIds = pullNotesWithTraceId(badAnnotations);
+    const notesWithRootSpanIds = pullNotesWithRootSpanId(badAnnotations);
     const categories = await createCategories(notes);
     const categoriesWithIds = await addCategories(categories);
-    const categorizedTraces = await getCategorizedTraces(
+    const categorizedRootSpans = await getCategorizedRootSpans(
       categories, 
-      notesWithTraceIds,
+      notesWithRootSpanIds,
     );
     await addCategoriesToAnnotations(
       categoriesWithIds, 
       badAnnotations, 
-      categorizedTraces
+      categorizedRootSpans
     );
-    return categorizedTraces;
+    return categorizedRootSpans;
   } catch (err) {
     console.error(err);
     throw err;
@@ -57,12 +57,12 @@ const resetCategoryTables = async (): Promise<void> => {
   }
 };
 
-// categorizedTraces contains traces each paired with their own array of categories
-// each trace/category pair is added to the join table annotation_categories
+// categorizedRootSpans contains root spans each paired with their own array of categories
+// each root span/category pair is added to the join table annotation_categories
 const addCategoriesToAnnotations = async (
   categories: Category[], // Used to get categoryId from category text
-  annotations: Annotation[], // Used to get annotation Id from the TraceId
-  categorizedTraces: CategorizedTrace[] // TraceId with categories to apply
+  annotations: Annotation[], // Used to get annotation Id from the RootSpanId
+  categorizedRootSpans: CategorizedRootSpan[] // RootSpanId with categories to apply
 ): Promise<CategorizedAnnotation[]> => {
   try {
     const catMap = mapCategories(categories);
@@ -72,8 +72,8 @@ const addCategoriesToAnnotations = async (
     const placeholders: string[] = [];
     let index = 1;
 
-    categorizedTraces.forEach(({ traceId, categories }) => {
-      const annId = annMap.get(traceId);
+    categorizedRootSpans.forEach(({ rootSpanId, categories }) => {
+      const annId = annMap.get(rootSpanId);
       categories.forEach(category => {
         const catId = catMap.get(category); 
         const id = uuidv4();
@@ -105,8 +105,8 @@ const mapCategories = (categoriesWithIds: Category[]): Map<string, string> => {
 };
 
 const mapAnnotations = (annotations: Annotation[]): Map<string, string> => {
-    return new Map(annotations.map(({ traceId, id }) => {
-      return [traceId, id] as const;
+    return new Map(annotations.map(({ rootSpanId, id }) => {
+      return [rootSpanId, id] as const;
     })
   );
 }
@@ -159,33 +159,33 @@ const pullNotes = (fullAnnotations: Annotation[]): string[] => {
   });
 };
 
-const pullNotesWithTraceId = (fullAnnotations: Annotation[]): string[] => {
+const pullNotesWithRootSpanId = (fullAnnotations: Annotation[]): string[] => {
   return fullAnnotations.map(annotation => {
-    return `${annotation.note}\ntraceID: ${annotation.traceId}`;
+    return `${annotation.note}\nrootSpanID: ${annotation.rootSpanId}`;
   });
 };
 
-const getCategorizedTraces = async (categories: string[], notesWithTraceId: string[]): Promise<CategorizedTrace[]> => {
+const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId: string[]): Promise<CategorizedRootSpan[]> => {
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   You are provided a list of error categories.
   The categories represent different types of errors that could apply to a note.
-  Then you are provided a list of notes and their traceIds.
-  The traceID will always follow the note that it is attached to on a new line.
+  Then you are provided a list of notes and their rootSpanIds.
+  The rootSpanID will always follow the note that it is attached to on a new line.
   Your job is to figure out which categories are relevant for each note.
   Multiple categories might apply to one note.  
   Return ONLY a valid JSON array of objects, no markdown fences.
-  Each object will have a traceId property and an array of cateogires.
+  Each object will have a rootSpanId property and an array of cateogires.
   Example: [
-    {"traceId": "SYN018", "categories": ["spelling", "speed"]},
-    {"traceId": "SYN019", "categories": ["spelling", "attitude"]},
-    {"traceId": "SYN021", "categories": ["spelling", "speed"]},
-    {"traceId": "SYN008", "categories": ["speed"]},
+    {"rootSpanId": "SYN018", "categories": ["spelling", "speed"]},
+    {"rootSpanId": "SYN019", "categories": ["spelling", "attitude"]},
+    {"rootSpanId": "SYN021", "categories": ["spelling", "speed"]},
+    {"rootSpanId": "SYN008", "categories": ["speed"]},
   ];
 };
   `.trim();
 
-  const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithTraceId.join('\n')}`;
+  const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithRootSpanId.join('\n')}`;
 
   let raw: string;
   try {
@@ -211,8 +211,8 @@ const getCategorizedTraces = async (categories: string[], notesWithTraceId: stri
   try {
     const arr = JSON.parse(clean);
     if (!Array.isArray(arr)) throw new Error('Not an array');
-    if (arr.length < notesWithTraceId.length) {
-      throw new OpenAIError('Not enough traces categorized');
+    if (arr.length < notesWithRootSpanId.length) {
+      throw new OpenAIError('Not enough root spans categorized');
     }
     return arr;
   } catch (e) {

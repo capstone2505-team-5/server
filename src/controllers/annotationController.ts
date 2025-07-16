@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
-import { CreateAnnotationRequest, Annotation, CategorizedTrace } from "../types/types";
-import { getAllTraces } from "../services/traceService";
+import { CreateAnnotationRequest, Annotation } from "../types/types";
 
 import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
+import { getAllRootSpans } from "../services/rootSpanService";
 
 
 export const getAnnotations = async (req: Request, res: Response) => {
@@ -31,25 +31,25 @@ export const getAnnotation = async (req: Request, res: Response) => {
 
 export const createAnnotation = async (req: Request, res: Response) => {
   try {
-    const { traceId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
+    const { rootSpanId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
     
     // Validate required fields
-    if (!traceId || !note) {
-      res.status(400).json({ error: 'traceId and note are required' });
+    if (!rootSpanId || !note) {
+      res.status(400).json({ error: 'rootSpanId and note are required' });
       return
     }
     
-    // Check if trace exists
-    const traces = await getAllTraces()
+    // Check if rootSpan exists
+    const rootSpans = await getAllRootSpans()
 
-    const traceExists = traces.find(t => t.id === traceId);
-    if (!traceExists) {
-      res.status(404).json({ error: 'Trace not found' });
+    const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
+    if (!rootSpanExists) {
+      res.status(404).json({ error: 'Root Span not found' });
       return
     }
 
     // should replace this with a service to get next ID probably
-    const annotation = await createNewAnnotation({traceId, note, rating})
+    const annotation = await createNewAnnotation({rootSpanId, note, rating})
         
     res.status(201).json(annotation);
   } catch (error) {

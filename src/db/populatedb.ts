@@ -79,12 +79,12 @@ async function populateAnnotationsTable(): Promise<void> {
 
     for (const annotation of mockAnnotations) {
       await client.query(
-        `INSERT INTO annotations (id, trace_id, note, rating)
+        `INSERT INTO annotations (id, root_span_id, note, rating)
         VALUES ($1, $2, $3, $4)
         ON CONFLICT (id) DO NOTHING`,
         [
           annotation.id,
-          annotation.traceId,
+          annotation.rootSpanId,
           annotation.note ?? null,
           annotation.rating
         ]

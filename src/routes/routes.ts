@@ -37,7 +37,7 @@ router.get('/annotations/:id', getAnnotation);
 // POST /api/annotations - Create a new annotation
 router.post('/annotations', createAnnotation);
 
-// POST /api/categorize - Create categories, add to annotations, return traceId/categories
+// POST /api/categorize - Create categories, add to annotations, return rootSpanId/categories
 router.post('/categorize', categorizeAnnotations);
 
 // Patch /api/annotations/:id - Patch a single annotation by id

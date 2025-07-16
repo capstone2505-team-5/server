@@ -10,43 +10,43 @@ export const mockTraces: Trace[] = recipes;
 
 export const mockAnnotations: Annotation[] = [
   {
-    "id": "999",
-    "traceId": "SYN018",
+    "id": "1",
+    "rootSpanId": "7a96ff0c2b27d316",
     "note": "spelling is bad",
     "rating": "bad",
     "categories": []
   },
   {
-    "id": "555",
-    "traceId": "SYN019",
+    "id": "2",
+    "rootSpanId": "5126fd534f21e310",
     "note": "things are spelled wrong",
     "rating": "bad",
     "categories": []
   },
   {
     "id": "3",
-    "traceId": "SYN021",
+    "rootSpanId": "e17e73a03d076e6f",
     "note": "answer is too long",
     "rating": "bad",
     "categories": []
   },
   {
     "id": "4",
-    "traceId": "SYN008",
+    "rootSpanId": "0474f0c0926837e2",
     "note": "the length of the answer is too long",
     "rating": "bad",
     "categories": []
   },
   {
     "id": "5",
-    "traceId": "SYN010",
+    "rootSpanId": "191fa4c63a81e2c4",
     "note": "the answer skipped steps",
     "rating": "bad",
     "categories": []
   },
   {
     "id": "6",
-    "traceId": "SYN009",
+    "rootSpanId": "1967270ec409a70d",
     "note": "there were steps that were skipped in the answer",
     "rating": "bad",
     "categories": []
