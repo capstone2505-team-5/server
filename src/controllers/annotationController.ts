@@ -31,7 +31,7 @@ export const getAnnotation = async (req: Request, res: Response) => {
 
 export const createAnnotation = async (req: Request, res: Response) => {
   try {
-    const { rootSpanId, note, rating = 'none' }: CreateAnnotationRequest = req.body;
+    const { rootSpanId, note, rating }: CreateAnnotationRequest = req.body;
     
     // Validate required fields
     if (!rootSpanId || !note) {
