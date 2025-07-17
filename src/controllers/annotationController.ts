@@ -34,13 +34,10 @@ export const createAnnotation = async (req: Request, res: Response) => {
     const { rootSpanId, note, rating }: CreateAnnotationRequest = req.body;
     
     // Validate required fields
-    if (!rootSpanId || !note) {
-      res.status(400).json({ error: 'rootSpanId and note are required' });
+    if (!rootSpanId || !rating) {
+      res.status(400).json({ error: 'rootSpanId and rating are required' });
       return
     }
-    
-    // Check if rootSpan exists
-    const rootSpans = await getAllRootSpans()
     
     // Validate required fields
     if (rating !== 'good' && rating !== 'bad') {
@@ -52,6 +49,9 @@ export const createAnnotation = async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Note must be given on "bad" rating' });
       return
     }
+
+    // Check if rootSpan exists
+    const rootSpans = await getAllRootSpans()
 
     const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
     if (!rootSpanExists) {
