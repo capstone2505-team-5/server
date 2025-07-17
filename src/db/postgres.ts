@@ -21,9 +21,21 @@ export const initializePostgres = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS root_spans (
+        id VARCHAR(50) PRIMARY KEY,
+        trace_id VARCHAR(50) NOT NULL,
+        input TEXT NOT NULL,
+        output TEXT NOT NULL,
+        project_name VARCHAR(50) NOT NULL,
+        span_name VARCHAR(50) NOT NULL,
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );  
+
       CREATE TABLE IF NOT EXISTS annotations (
         id VARCHAR(50) PRIMARY KEY,
-        trace_id VARCHAR(50) REFERENCES traces(id) ON DELETE CASCADE,
+        root_span_id VARCHAR(50) REFERENCES root_spans(id) ON DELETE CASCADE,
         note TEXT,
         rating TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
@@ -42,11 +54,6 @@ export const initializePostgres = async () => {
 
     `);
 
-    await pool.query(`
-      INSERT INTO traces (id, input, output)
-      VALUES ('2', 'Is traces table live?', 'yes')
-      ON CONFLICT (id) DO NOTHING;
-    `);
   } catch (error) {
     console.error('PostgreSQL initialization error:', error);
     throw error;

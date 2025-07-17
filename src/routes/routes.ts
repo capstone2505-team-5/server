@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { getTraces, getTrace, deleteTrace } from "../controllers/traceController";
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
-
+import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
+import { getProjects } from "../controllers/projectController";
 // import from controllers here
 
 const router = Router()
@@ -17,6 +18,14 @@ router.get('/traces/:id', getTrace);
 // DELETE /api/traces/:id - Delete a single trace by id
 router.delete('/traces/:id', deleteTrace)
 
+// ROOT SPAN ROUTES
+
+// GET /api/rootSpans - Get all rootSpans
+router.get('/rootSpans', getRootSpans);
+
+// GET /api/rootSpans/:id - Get a single root span by id
+router.get('/rootSpans/:id', getRootSpan);
+
 
 // ANNOTATIONS ROUTES
 
@@ -29,7 +38,7 @@ router.get('/annotations/:id', getAnnotation);
 // POST /api/annotations - Create a new annotation
 router.post('/annotations', createAnnotation);
 
-// POST /api/categorize - Create categories, add to annotations, return traceId/categories
+// POST /api/categorize - Create categories, add to annotations, return rootSpanId/categories
 router.post('/categorize', categorizeAnnotations);
 
 // Patch /api/annotations/:id - Patch a single annotation by id
@@ -37,6 +46,10 @@ router.patch('/annotations/:id', updateAnnotation);
 
 // DELETE /api/annotation/:id - Delete a single annotation by id
 router.delete('/annotations/:id', deleteAnnotation)
+
+// PROJECT ROUTES
+// GET /api/projects - Get all projects
+router.get('/projects', getProjects)
 
 
 export default router

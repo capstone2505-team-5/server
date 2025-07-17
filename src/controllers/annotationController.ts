@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation } from "../types/types";
-import { getAllTraces } from "../services/traceService";
 
 import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
+import { getAllRootSpans } from "../services/rootSpanService";
 
 
 export const getAnnotations = async (req: Request, res: Response) => {
@@ -31,14 +31,18 @@ export const getAnnotation = async (req: Request, res: Response) => {
 
 export const createAnnotation = async (req: Request, res: Response) => {
   try {
-    const { traceId, rating, note = '' }: CreateAnnotationRequest = req.body;
+    const { rootSpanId, note, rating }: CreateAnnotationRequest = req.body;
     
     // Validate required fields
-    if (!traceId || !rating) {
-      res.status(400).json({ error: 'traceId and rating are both required' });
+    if (!rootSpanId || !note) {
+      res.status(400).json({ error: 'rootSpanId and note are required' });
       return
     }
-
+    
+    // Check if rootSpan exists
+    const rootSpans = await getAllRootSpans()
+    
+    // Validate required fields
     if (rating !== 'good' && rating !== 'bad') {
       res.status(400).json({ error: 'rating must be either "good" or "bad"' });
       return
@@ -49,16 +53,14 @@ export const createAnnotation = async (req: Request, res: Response) => {
       return
     }
 
-    // Check if trace exists
-    const traces = await getAllTraces()
-
-    const traceExists = traces.find(t => t.id === traceId);
-    if (!traceExists) {
-      res.status(404).json({ error: 'Trace not found' });
+    const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
+    if (!rootSpanExists) {
+      res.status(404).json({ error: 'Root Span not found' });
       return
     }
-
-    const annotation = await createNewAnnotation({traceId, note, rating})
+    
+    // should replace this with a service to get next ID probably
+    const annotation = await createNewAnnotation({rootSpanId, note, rating})
         
     res.status(201).json(annotation);
   } catch (error) {

@@ -15,7 +15,7 @@ export class AnnotationNotFoundError extends Error {
 export const getAllAnnotations = async (): Promise<Annotation[]> => {
   try {
     const query = `
-      SELECT id, trace_id, note, rating 
+      SELECT id, root_span_id, note, rating 
       FROM annotations 
       ORDER BY created_at DESC
     `;
@@ -24,7 +24,7 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
     
     return result.rows.map(row => ({
       id: row.id,
-      traceId: row.trace_id,
+      rootSpanId: row.root_span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -39,12 +39,12 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
 export const getAnnotationById = async (id: string): Promise<Annotation> => {
   try {
     const query = `
-      SELECT id, trace_id, note, rating 
+      SELECT id, root_span_id, note, rating 
       FROM annotations 
       WHERE id = $1
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; rating: Rating, note: string }>(query, [id]);
+    const result = await pool.query<{ id: string; root_span_id: string; rating: Rating, note: string }>(query, [id]);
 
     if (result.rows.length === 0) {
       throw new AnnotationNotFoundError(id)
@@ -53,7 +53,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.trace_id,
+      rootSpanId: row.root_span_id,
       rating: row.rating,
       note: row.note,
       categories: []
@@ -70,26 +70,26 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 }
 
 export const createNewAnnotation = async (annotation: NewAnnotation) => {
-  const { traceId, note, rating } = annotation;
+  const { rootSpanId, note, rating } = annotation;
   const id = uuidv4();
 
   try {
     const query = `
-      INSERT INTO annotations (id, trace_id, note, rating)
+      INSERT INTO annotations (id, root_span_id, note, rating)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, trace_id, note, rating
+      RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; note: string; rating: Rating }>(
+    const result = await pool.query<{ id: string; root_span_id: string; note: string; rating: Rating }>(
       query,
-      [id, traceId, note, rating]
+      [id, rootSpanId, note, rating]
     );
 
     const row = result.rows[0];
 
     return {
       id: row.id,
-      traceId: row.trace_id,
+      rootSpanId: row.root_span_id,
       note: row.note,
       rating: row.rating,
       categories: []
@@ -126,10 +126,10 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
       UPDATE annotations
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
-      RETURNING id, trace_id, note, rating
+      RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; trace_id: string; note: string; rating: Rating }>(
+    const result = await pool.query<{ id: string; root_span_id: string; note: string; rating: Rating }>(
       query,
       values
     );
@@ -142,7 +142,7 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
 
     return {
       id: row.id,
-      traceId: row.trace_id,
+      rootSpanId: row.root_span_id,
       note: row.note,
       rating: row.rating,
       categories: [] // You can customize this if you're supporting categories
@@ -163,7 +163,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     const query = `
       DELETE FROM annotations
       WHERE id = $1
-      RETURNING id, trace_id, note, rating
+      RETURNING id, root_span_id, note, rating
     `;
 
     const result = await pool.query(query, [id]);
@@ -175,7 +175,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     const row = result.rows[0];
     return {
       id: row.id,
-      traceId: row.trace_id,
+      rootSpanId: row.root_span_id,
       note: row.note,
       rating: row.rating,
       categories: []
