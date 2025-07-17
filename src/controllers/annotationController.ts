@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation } from "../types/types";
+import { getAllTraces } from "../services/traceService";
 
 import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
 import { getAllRootSpans } from "../services/rootSpanService";
@@ -41,13 +42,27 @@ export const createAnnotation = async (req: Request, res: Response) => {
     
     // Check if rootSpan exists
     const rootSpans = await getAllRootSpans()
+    
+    // Validate required fields
+    if (rating !== 'good' && rating !== 'bad') {
+      res.status(400).json({ error: 'rating must be either "good" or "bad"' });
+      return
+    }
+
+    if (rating === 'bad' && note === '') {
+      res.status(400).json({ error: 'Note must be given on "bad" rating' });
+      return
+    }
+
+    // Check if trace exists
+    const traces = await getAllTraces()
 
     const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
     if (!rootSpanExists) {
       res.status(404).json({ error: 'Root Span not found' });
       return
     }
-
+    
     // should replace this with a service to get next ID probably
     const annotation = await createNewAnnotation({rootSpanId, note, rating})
         
@@ -59,13 +74,24 @@ export const createAnnotation = async (req: Request, res: Response) => {
 
 export const updateAnnotation = async (req: Request, res: Response) => {
   try {
-    const { note, rating }: Annotation = req.body;
+    const { rating, note }: Annotation = req.body;
     
     // Validate that at least one field is provided for update
-    if (!note && !rating) {
-      res.status(400).json({ error: 'At least one field (note or rating) is required for update' });
+    if (!rating) {
+      res.status(400).json({ error: 'rating is required for update' });
       return;
     }
+
+    if (rating !== 'good' && rating !== 'bad') {
+      res.status(400).json({ error: 'rating must be either "good" or "bad"' });
+      return
+    }
+
+    if (rating === 'bad' && !note) {
+      res.status(400).json({ error: 'Note must be given on "bad" rating' });
+      return
+    }
+
     const updatedAnnotation = await updateAnnotationById(req.params.id, {note, rating})
     
     res.json(updatedAnnotation);

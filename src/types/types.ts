@@ -7,7 +7,7 @@ export interface Trace {
 }
 
 // Subject to change
-export type Rating = 'good' | 'bad' | 'none';
+export type Rating = 'good' | 'bad';
 
 export interface Annotation {
   id: string;
