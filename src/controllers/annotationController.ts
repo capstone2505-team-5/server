@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation } from "../types/types";
-import { getAllTraces } from "../services/traceService";
 
 import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
 import { getAllRootSpans } from "../services/rootSpanService";
@@ -53,9 +52,6 @@ export const createAnnotation = async (req: Request, res: Response) => {
       res.status(400).json({ error: 'Note must be given on "bad" rating' });
       return
     }
-
-    // Check if trace exists
-    const traces = await getAllTraces()
 
     const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
     if (!rootSpanExists) {
