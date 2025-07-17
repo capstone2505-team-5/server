@@ -7,7 +7,7 @@ export interface Trace {
 }
 
 // Subject to change
-export type Rating = 'good' | 'bad' | 'none';
+export type Rating = 'good' | 'bad';
 
 export interface Annotation {
   id: string;
@@ -20,8 +20,8 @@ export interface Annotation {
 export type NewAnnotation = Omit<Annotation, 'id' | 'categories'>
 
 // Using utility types to derive from the main Annotation interface
-export type CreateAnnotationRequest = Pick<Annotation, 'note' | 'traceId'> & {
-  rating?: Rating;
+export type CreateAnnotationRequest = Pick<Annotation, 'rating' | 'traceId'> & {
+  note?: string;
 };
 
 export interface CategorizedTrace {
