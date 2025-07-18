@@ -45,24 +45,45 @@ const fetchRootSpans = async (projectName?: string) => {
   }
 };
 
+function safeParseArray(raw: any): any[] {
+  if (typeof raw !== 'string') {
+    console.warn('Expected JSON string but got', raw);
+    return [];
+  }
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    console.warn('Bad JSON – defaulting to []:', raw);
+    return [];
+  }
+}
+
 // This is the formatting for our rootSpans where we want the content from the last object in an array.
 const formatRootSpans = (data: any): RootSpan[] => {
   return data.data.projects.edges.flatMap((project: any) => {
     return project.node.spans.edges.map((span: any) => {
-      const output = JSON.parse(span.node.output.value);
-      const input = JSON.parse(span.node.input.value);
-      const inputContent = input[input.length - 1].content;
-      const outputContent = output[output.length - 1].content;
+      // 1. safely grab the raw strings (or fall back to "")
+      const rawInput  = span.node.input?.value  ?? '';
+      const rawOutput = span.node.output?.value ?? '';
+
+      // 2. parse into arrays (empty if null/malformed)
+      const inputArr  = safeParseArray(rawInput);
+      const outputArr = safeParseArray(rawOutput);
+
+      // 3. pick the last content (or "")
+      const inputContent  = inputArr.length  ? inputArr[inputArr.length  - 1].content : '';
+      const outputContent = outputArr.length ? outputArr[outputArr.length - 1].content : '';
 
       return {
-        id: span.node.context.spanId,
-        traceId: span.node.context.traceId,
-        startTime: span.node.startTime,
-        endTime: span.node.endTime,
-        input: inputContent,
-        output: outputContent,
+        id:          span.node.context.spanId,
+        traceId:     span.node.context.traceId,
+        startTime:   span.node.startTime,
+        endTime:     span.node.endTime,
+        input:       inputContent || 'input not retrieved',
+        output:      outputContent || 'output not retrieved',
         projectName: project.node.name,
-        spanName: span.node.name,
+        spanName:    span.node.name,
       };
     });
   });
