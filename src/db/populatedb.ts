@@ -5,8 +5,8 @@ import { RootSpan } from "../types/types";
 
 export async function populateAllMockData() {
   await resetAnnotationTable(); //dev mode only
-  await populateTracesTable();
-  await populateAnnotationsTable();
+  //await populateTracesTable();
+  //await populateAnnotationsTable();
 }
 
 export const populateRootSpansTable = async (rootSpans: RootSpan[]) => {

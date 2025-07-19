@@ -13,7 +13,7 @@ async function startServer() {
     await populateRootSpansTable(rootSpans);
   }
 
-  await populateAllMockData();
+  //await populateAllMockData();
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });
