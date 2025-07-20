@@ -36,7 +36,7 @@ const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
     }`;
 
     // If projectName is empty it will retrieve all root spans!
-    const variables = projectName ? { projectName } : { projectName: "recipe-chatbot-oneTrace" };
+    const variables = projectName ? { projectName } : { projectName: "" };
     const data = await queryAPI(query, variables);
     const formattedData = formatRootSpans(data);
     return formattedData;
@@ -119,6 +119,61 @@ const spanKindFormatter = (spanKind: string | null, inputContent: any, outputCon
       });
     }
     
+    return {
+      input: formattedInput,
+      output: formattedOutput
+    };
+  } else if (spanKind === "chain") {
+    console.log('⛓️ Processing Chain span');
+    
+    // Format input: extract content from the last object in the messages array
+    let formattedInput = inputContent;
+    
+    if (inputContent && typeof inputContent === 'object' && inputContent.messages && Array.isArray(inputContent.messages)) {
+      console.log('✅ Found input messages array with', inputContent.messages.length, 'messages');
+      const messages = inputContent.messages;
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        console.log('📄 Last input message:', lastMessage);
+        if (lastMessage && lastMessage.content) {
+          formattedInput = lastMessage.content;
+          console.log('✅ Extracted content from last input message');
+        } else {
+          console.log('⚠️ Last input message has no content property');
+        }
+      }
+    } else {
+      console.log('❌ Input is not an object with messages array. Input structure:', {
+        isObject: typeof inputContent === 'object',
+        hasMessages: inputContent?.messages !== undefined,
+        messagesIsArray: Array.isArray(inputContent?.messages)
+      });
+    }
+
+    // Format output: extract content from the last object in the messages array (same as input)
+    let formattedOutput = outputContent;
+    
+    if (outputContent && typeof outputContent === 'object' && outputContent.messages && Array.isArray(outputContent.messages)) {
+      console.log('✅ Found output messages array with', outputContent.messages.length, 'messages');
+      const messages = outputContent.messages;
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        console.log('📄 Last output message:', lastMessage);
+        if (lastMessage && lastMessage.content) {
+          formattedOutput = lastMessage.content;
+          console.log('✅ Extracted content from last output message');
+        } else {
+          console.log('⚠️ Last output message has no content property');
+        }
+      }
+    } else {
+      console.log('❌ Output is not an object with messages array. Output structure:', {
+        isObject: typeof outputContent === 'object',
+        hasMessages: outputContent?.messages !== undefined,
+        messagesIsArray: Array.isArray(outputContent?.messages)
+      });
+    }
+
     return {
       input: formattedInput,
       output: formattedOutput
