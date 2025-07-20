@@ -5,6 +5,7 @@ import { RootSpan } from "../types/types";
 
 export async function populateAllMockData() {
   await resetAnnotationTable(); //dev mode only
+  await resetRootSpansTable(); //dev mode only
   //await populateTracesTable();
   //await populateAnnotationsTable();
 }
@@ -37,6 +38,19 @@ const resetAnnotationTable = async (): Promise<void> => {
   await pool.query('BEGIN');
   try {
     await pool.query('DELETE FROM annotations');
+    await pool.query('COMMIT');
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  }
+};
+
+// dev mode only ... lets you easily start with new annotations each time
+const resetRootSpansTable = async (): Promise<void> => {
+  // Wrap in a transaction for safety
+  await pool.query('BEGIN');
+  try {
+    await pool.query('DELETE FROM root_spans');
     await pool.query('COMMIT');
   } catch (e) {
     await pool.query('ROLLBACK');
