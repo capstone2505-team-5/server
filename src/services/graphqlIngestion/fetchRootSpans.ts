@@ -36,7 +36,7 @@ const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
     }`;
 
     // If projectName is empty it will retrieve all root spans!
-    const variables = projectName ? { projectName } : { projectName: "error analysis app" };
+    const variables = projectName ? { projectName } : { projectName: "recipe-chatbot-oneTrace" };
     const data = await queryAPI(query, variables);
     const formattedData = formatRootSpans(data);
     return formattedData;
@@ -123,8 +123,38 @@ const spanKindFormatter = (spanKind: string | null, inputContent: any, outputCon
       input: formattedInput,
       output: formattedOutput
     };
+  } else if (spanKind === "agent") {
+    console.log('🤖 Processing Agent span');
+    
+    // Format input: extract content from the last object in the array
+    let formattedInput = inputContent;
+    
+    if (inputContent && Array.isArray(inputContent)) {
+      console.log('✅ Found input array with', inputContent.length, 'items');
+      if (inputContent.length > 0) {
+        const lastItem = inputContent[inputContent.length - 1];
+        console.log('📄 Last input item:', lastItem);
+        if (lastItem && lastItem.content) {
+          formattedInput = lastItem.content;
+          console.log('✅ Extracted content from last input item');
+        } else {
+          console.log('⚠️ Last input item has no content property');
+        }
+      }
+    } else {
+      console.log('❌ Input is not an array. Input structure:', {
+        isArray: Array.isArray(inputContent),
+        inputType: typeof inputContent
+      });
+    }
+
+    // For agent spans, keep output as-is (you didn't specify output formatting)
+    return {
+      input: formattedInput,
+      output: outputContent
+    };
   } else {
-    console.log('📋 Processing non-LLM span, returning as-is');
+    console.log('📋 Processing non-LLM/non-Agent span, returning as-is');
   }
   
   // For non-LLM spans, return as-is
