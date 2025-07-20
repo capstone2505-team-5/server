@@ -8,7 +8,7 @@ import fetchRootSpans from "./services/graphqlIngestion/fetchRootSpans";
 async function startServer() {
   await initializePostgres();
 
-  await populateAllMockData(); // resets annotations and rootspans
+  await populateAllMockData(); // DEV MODE - resets annotations and rootspans
 
   const rootSpans = await fetchRootSpans();
   if(rootSpans){

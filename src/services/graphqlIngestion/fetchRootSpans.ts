@@ -36,7 +36,7 @@ const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
     }`;
 
     // If projectName is empty it will retrieve all root spans!
-    const variables = projectName ? { projectName } : { projectName: "" };
+    const variables = projectName ? { projectName } : { projectName: "error analysis app" };
     const data = await queryAPI(query, variables);
     const formattedData = formatRootSpans(data);
     return formattedData;
@@ -57,6 +57,82 @@ function safeJsonParse(value: string | null | undefined): any {
     return value; // Return original string if parsing fails
   }
 }
+
+const spanKindFormatter = (spanKind: string | null, inputContent: any, outputContent: any) => {
+  console.log('🔍 spanKindFormatter called with:', {
+    spanKind,
+    inputContentType: typeof inputContent,
+    outputContentType: typeof outputContent,
+    inputPreview: typeof inputContent === 'string' ? inputContent.substring(0, 100) + '...' : inputContent
+  });
+
+  if (spanKind === "llm") {
+    console.log('📝 Processing LLM span');
+    
+    // Format input: extract the content from the last message
+    let formattedInput = inputContent;
+    
+    if (inputContent && typeof inputContent === 'object' && inputContent.messages && Array.isArray(inputContent.messages)) {
+      console.log('✅ Found input messages array with', inputContent.messages.length, 'messages');
+      const messages = inputContent.messages;
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        console.log('📄 Last input message:', lastMessage);
+        if (lastMessage && lastMessage.content) {
+          formattedInput = lastMessage.content;
+          console.log('✅ Extracted content from last input message');
+        } else {
+          console.log('⚠️ Last input message has no content property');
+        }
+      }
+    } else {
+      console.log('❌ Input is not an object with messages array. Input structure:', {
+        isObject: typeof inputContent === 'object',
+        hasMessages: inputContent?.messages !== undefined,
+        messagesIsArray: Array.isArray(inputContent?.messages)
+      });
+    }
+
+    // Format output: extract choices[0].message.content from OpenAI response
+    let formattedOutput = outputContent;
+    
+    if (outputContent && typeof outputContent === 'object' && outputContent.choices && Array.isArray(outputContent.choices)) {
+      console.log('✅ Found output choices array with', outputContent.choices.length, 'choices');
+      if (outputContent.choices.length > 0) {
+        const firstChoice = outputContent.choices[0];
+        console.log('📄 First choice:', firstChoice);
+        if (firstChoice && firstChoice.message && firstChoice.message.content) {
+          formattedOutput = firstChoice.message.content;
+          console.log('✅ Extracted content from first choice message');
+        } else {
+          console.log('⚠️ First choice missing message.content structure:', {
+            hasMessage: !!firstChoice?.message,
+            hasContent: !!firstChoice?.message?.content
+          });
+        }
+      }
+    } else {
+      console.log('❌ Output is not an object with choices array. Output structure:', {
+        isObject: typeof outputContent === 'object',
+        hasChoices: outputContent?.choices !== undefined,
+        choicesIsArray: Array.isArray(outputContent?.choices)
+      });
+    }
+    
+    return {
+      input: formattedInput,
+      output: formattedOutput
+    };
+  } else {
+    console.log('📋 Processing non-LLM span, returning as-is');
+  }
+  
+  // For non-LLM spans, return as-is
+  return {
+    input: inputContent,
+    output: outputContent
+  };
+};
 
 const isValidRootSpan = (rootSpan: any): boolean => {
   const requiredProps = ['id', 'traceId', 'startTime', 'endTime', 'input', 'output', 'projectName', 'spanName'];
@@ -101,22 +177,47 @@ const formatRootSpans = (data: any): RootSpan[] => {
               return null;
             }
 
-            console.log('Processing span:', context.spanId);
+            console.log('🚀 Processing span:', context.spanId);
+            console.log('📊 Raw span data:', {
+              spanKind: spanNode?.spanKind,
+              inputValue: spanNode?.input?.value?.substring(0, 100) + '...',
+              outputValue: spanNode?.output?.value?.substring(0, 100) + '...',
+              inputType: typeof spanNode?.input?.value,
+              outputType: typeof spanNode?.output?.value
+            });
             
-            // Safe access and JSON parsing
+            // Use safeJsonParse instead of inline JSON.parse
             const inputValue = spanNode?.input?.value;
             const outputValue = spanNode?.output?.value;
             
+            console.log('🔧 Before parsing - Input value:', typeof inputValue, inputValue?.substring(0, 200));
+            console.log('🔧 Before parsing - Output value:', typeof outputValue, outputValue?.substring(0, 200));
+            
             const inputContent = safeJsonParse(inputValue);
             const outputContent = safeJsonParse(outputValue);
+            
+            console.log('✨ After parsing - Input content:', typeof inputContent, inputContent);
+            console.log('✨ After parsing - Output content:', typeof outputContent, outputContent);
+            
+            // Apply span kind specific formatting
+            const spanKind = spanNode?.spanKind || null;
+            console.log('🏷️ Span kind before formatter:', spanKind);
+            
+            const formattedContent = spanKindFormatter(spanKind, inputContent, outputContent);
+            
+            console.log('🎯 Final formatted content:', {
+              input: typeof formattedContent.input,
+              output: typeof formattedContent.output,
+              inputPreview: typeof formattedContent.input === 'string' ? formattedContent.input.substring(0, 100) : formattedContent.input
+            });
             
             return {
               id: context.spanId,
               traceId: context.traceId,
               startTime: spanNode?.startTime || null,
               endTime: spanNode?.endTime || null,
-              input: inputContent,
-              output: outputContent,
+              input: formattedContent.input,
+              output: formattedContent.output,
               projectName: projectName,
               spanName: spanNode?.name || null,
             };
@@ -145,7 +246,7 @@ const formatRootSpans = (data: any): RootSpan[] => {
         });
     });
 
-    console.log(`Processed ${allSpans.length} valid root spans`);
+    console.log(`📈 Processed ${allSpans.length} valid root spans`);
     return allSpans;
 
   } catch (error) {
