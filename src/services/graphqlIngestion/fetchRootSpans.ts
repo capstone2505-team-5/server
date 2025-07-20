@@ -148,10 +148,31 @@ const spanKindFormatter = (spanKind: string | null, inputContent: any, outputCon
       });
     }
 
-    // For agent spans, keep output as-is (you didn't specify output formatting)
+    // Format output: extract content from the last object in the array (same as input)
+    let formattedOutput = outputContent;
+    
+    if (outputContent && Array.isArray(outputContent)) {
+      console.log('✅ Found output array with', outputContent.length, 'items');
+      if (outputContent.length > 0) {
+        const lastItem = outputContent[outputContent.length - 1];
+        console.log('📄 Last output item:', lastItem);
+        if (lastItem && lastItem.content) {
+          formattedOutput = lastItem.content;
+          console.log('✅ Extracted content from last output item');
+        } else {
+          console.log('⚠️ Last output item has no content property');
+        }
+      }
+    } else {
+      console.log('❌ Output is not an array. Output structure:', {
+        isArray: Array.isArray(outputContent),
+        outputType: typeof outputContent
+      });
+    }
+
     return {
       input: formattedInput,
-      output: outputContent
+      output: formattedOutput
     };
   } else {
     console.log('📋 Processing non-LLM/non-Agent span, returning as-is');
