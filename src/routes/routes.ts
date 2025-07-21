@@ -3,9 +3,11 @@ import { getTraces, getTrace, deleteTrace } from "../controllers/traceController
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
+import { getQueues, createQueue, getQueue, updateQueue } from "../controllers/queueController";
+
 // import from controllers here
 
-const router = Router()
+const router = Router();
 
 // TRACES ROUTES
 
@@ -16,7 +18,7 @@ router.get('/traces', getTraces);
 router.get('/traces/:id', getTrace);
 
 // DELETE /api/traces/:id - Delete a single trace by id
-router.delete('/traces/:id', deleteTrace)
+router.delete('/traces/:id', deleteTrace);
 
 // ROOT SPAN ROUTES
 
@@ -30,7 +32,7 @@ router.get('/rootSpans/:id', getRootSpan);
 // ANNOTATIONS ROUTES
 
 // GET /api/annotations - Get all annotations
-router.get('/annotations', getAnnotations)
+router.get('/annotations', getAnnotations);
 
 // GET /api/annotations/:id - Get a single annotation by id
 router.get('/annotations/:id', getAnnotation);
@@ -45,11 +47,24 @@ router.post('/categorize', categorizeAnnotations);
 router.patch('/annotations/:id', updateAnnotation);
 
 // DELETE /api/annotation/:id - Delete a single annotation by id
-router.delete('/annotations/:id', deleteAnnotation)
+router.delete('/annotations/:id', deleteAnnotation);
 
 // PROJECT ROUTES
 // GET /api/projects - Get all projects
-router.get('/projects', getProjects)
+router.get('/projects', getProjects);
 
+// QUEUE ROUTES
+
+// GET /api/queues - Get all queues
+router.get('/queues', getQueues);
+
+// POST /api/queues - Create a new queue
+router.post('/queues', createQueue);
+
+// GET /api/queues/:id - Get a single queue by id
+router.get('/queues/:id', getQueue);
+
+// PATCH /api/queues/:id - Update a single queue by id
+router.patch('/queues/:id', updateQueue);
 
 export default router
