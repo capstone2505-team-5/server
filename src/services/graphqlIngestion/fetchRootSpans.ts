@@ -63,9 +63,10 @@ function safeParseArray(raw: any): any[] {
 const formatRootSpans = (data: any): RootSpan[] => {
   return data.data.projects.edges.flatMap((project: any) => {
     return project.node.spans.edges.map((span: any) => {
+
       // 1. safely grab the raw strings (or fall back to "")
-      const rawInput  = span.node.input?.value  ?? '';
-      const rawOutput = span.node.output?.value ?? '';
+      const rawInput  = span.node.input?.value  ?? 'bad input not retrieved';
+      const rawOutput = span.node.output?.value ?? 'bad output not retrieved';
 
       // 2. parse into arrays (empty if null/malformed)
       const inputArr  = safeParseArray(rawInput);

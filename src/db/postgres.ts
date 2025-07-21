@@ -24,6 +24,7 @@ export const initializePostgres = async () => {
       CREATE TABLE IF NOT EXISTS root_spans (
         id VARCHAR(50) PRIMARY KEY,
         trace_id VARCHAR(50) NOT NULL,
+        queue_id VARCHAR(50) REFERENCES queues(id) ON DELETE SET NULL,
         input TEXT NOT NULL,
         output TEXT NOT NULL,
         project_name VARCHAR(50) NOT NULL,
@@ -50,6 +51,12 @@ export const initializePostgres = async () => {
         id VARCHAR(50) PRIMARY KEY,
         annotation_id VARCHAR(50) NOT NULL REFERENCES annotations(id) ON DELETE CASCADE,
         category_id VARCHAR(50) NOT NULL REFERENCES categories(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS queues (
+        id          VARCHAR(50) PRIMARY KEY,
+        name        TEXT        NOT NULL,
+        created_at  TIMESTAMP   DEFAULT NOW()
       );
 
     `);
