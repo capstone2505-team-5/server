@@ -61,10 +61,10 @@ router.get('/queues', getQueues);
 // POST /api/queues - Create a new queue
 router.post('/queues', createQueue);
 
-// GET /api/queues/:id - Get a single queue by id
+// // GET /api/queues/:id - Get a single queue by id
 router.get('/queues/:id', getQueue);
 
-// PATCH /api/queues/:id - Update a single queue by id
-router.patch('/queues/:id', updateQueue);
+// // POST /api/queues/:id - Update a single queue by id
+router.post('/queues/:id', updateQueue);
 
 export default router
