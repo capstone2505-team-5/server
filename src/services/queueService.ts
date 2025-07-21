@@ -43,8 +43,16 @@ export const getAllQueues = async (): Promise<QueueSummary[]> => {
     GROUP BY q.id, q.name
     ORDER BY q.name;
   `;
-  const result = await pool.query<QueueSummary>(query);
-  return result.rows;
+
+  const result = await pool.query(query);
+
+  return result.rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    totalSpans: parseInt(row.totalSpans, 10),
+    annotatedCount: parseInt(row.annotatedCount, 10),
+    goodCount: parseInt(row.goodCount, 10)
+  }));
 };
 
 export const createNewQueue = async (
