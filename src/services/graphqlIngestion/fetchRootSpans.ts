@@ -1,6 +1,6 @@
 import { RootSpan } from "../../types/types";
 import { queryAPI } from "./queryAPI";
-import type { GraphQLResponse } from '../../types/types';
+import type { GraphQLResponse, ProjectEdge, SpanEdge } from '../../types/types';
 
 const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
   try {
@@ -49,7 +49,7 @@ const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
 
 const formatRootSpans = (data: GraphQLResponse): RootSpan[] => {
   try {
-    // Json parse spans and format by spanKind
+    // Parse json and format by spanKind
     const allSpans = parseAndFormatSpans(data);
 
     // Filter out spans with any missing properties
@@ -69,7 +69,7 @@ const parseAndFormatSpans = (data: GraphQLResponse): (RootSpan | null)[] => {
     console.log('No projects data found');
     return [];
   }
-  return data.data.projects.edges.flatMap((project: any) => {
+  return data.data.projects.edges.flatMap((project: ProjectEdge) => {
     if (!project?.node?.spans?.edges) {
       console.log('No spans found for project:', project?.node?.name);
       return [];
@@ -82,7 +82,7 @@ const parseAndFormatSpans = (data: GraphQLResponse): (RootSpan | null)[] => {
     }
 
     return project.node.spans.edges
-      .map((span: any) => {
+      .map((span: SpanEdge) => {
         try {
           const spanNode = span?.node;
           if (!spanNode) {
@@ -149,7 +149,7 @@ const parseAndFormatSpans = (data: GraphQLResponse): (RootSpan | null)[] => {
 }
 
   const filterSpans = (allSpans: (RootSpan | null)[]): RootSpan[] => {
-    return allSpans.filter((rootSpan: any): rootSpan is RootSpan => {
+    return allSpans.filter((rootSpan: (RootSpan | null)): rootSpan is RootSpan => {
       if (rootSpan === null) {
         return false; // Filter out failed spans
       }
@@ -356,7 +356,7 @@ const spanKindFormatter = (spanKind: string | null, inputContent: any, outputCon
     console.log('📋 Processing Uknown Kind span, returning as-is');
   }
   
-  // For non-LLM spans, return as-is
+  // For spans with no spanKind, return as-is
   return {
     input: inputContent,
     output: outputContent
