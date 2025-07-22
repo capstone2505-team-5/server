@@ -56,3 +56,28 @@ export interface Project {
   name: string;
   createdAt: string;
 }
+
+export interface GraphQLResponse {
+  data?: {
+    projects?: {
+      edges?: Array<{
+        node?: {
+          name?: string;
+          spans?: {
+            edges?: Array<{
+              node?: {
+                context?: { spanId: string; traceId: string };
+                input?: { value: string };
+                output?: { value: string };
+                startTime?: string;
+                endTime?: string;
+                name?: string;
+                spanKind?: string;
+              };
+            }>;
+          };
+        };
+      }>;
+    };
+  };
+}

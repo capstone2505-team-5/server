@@ -1,5 +1,6 @@
 import { RootSpan } from "../../types/types";
 import { queryAPI } from "./queryAPI";
+import type { GraphQLResponse } from '../../types/types';
 
 const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
   try {
@@ -45,6 +46,128 @@ const fetchRootSpans = async (projectName?: string): Promise<RootSpan[]> => {
     return []; // Return empty array instead of undefined
   }
 };
+
+const formatRootSpans = (data: GraphQLResponse): RootSpan[] => {
+  try {
+    // Json parse spans and format by spanKind
+    const allSpans = parseAndFormatSpans(data);
+
+    // Filter out spans with any missing properties
+    const filteredSpans = filterSpans(allSpans); 
+
+    console.log(`📈 Processed ${filteredSpans.length} valid root spans`);
+    return filteredSpans;
+
+  } catch (error) {
+    console.error('Error in formatRootSpans:', error);
+    return []; // Return empty array on any formatting error
+  }
+};
+
+const parseAndFormatSpans = (data: GraphQLResponse): (RootSpan | null)[] => {
+  if (!data?.data?.projects?.edges) {
+    console.log('No projects data found');
+    return [];
+  }
+  return data.data.projects.edges.flatMap((project: any) => {
+    if (!project?.node?.spans?.edges) {
+      console.log('No spans found for project:', project?.node?.name);
+      return [];
+    }
+
+    const projectName = project?.node?.name;
+    if (!projectName) {
+      console.warn('Project missing name, skipping');
+      return [];
+    }
+
+    return project.node.spans.edges
+      .map((span: any) => {
+        try {
+          const spanNode = span?.node;
+          if (!spanNode) {
+            console.warn('Span node is missing, skipping');
+            return null;
+          }
+
+          const context = spanNode?.context;
+          if (!context?.spanId || !context?.traceId) {
+            console.warn('Span missing required context (spanId/traceId), skipping');
+            return null;
+          }
+
+          console.log('🚀 Processing span:', context.spanId);
+          console.log('📊 Raw span data:', {
+            spanKind: spanNode?.spanKind,
+            inputValue: spanNode?.input?.value?.substring(0, 100) + '...',
+            outputValue: spanNode?.output?.value?.substring(0, 100) + '...',
+            inputType: typeof spanNode?.input?.value,
+            outputType: typeof spanNode?.output?.value
+          });
+          
+          // Use safeJsonParse instead of inline JSON.parse
+          const inputValue = spanNode?.input?.value;
+          const outputValue = spanNode?.output?.value;
+          
+          console.log('🔧 Before parsing - Input value:', typeof inputValue, inputValue?.substring(0, 200));
+          console.log('🔧 Before parsing - Output value:', typeof outputValue, outputValue?.substring(0, 200));
+          
+          const inputContent = safeJsonParse(inputValue);
+          const outputContent = safeJsonParse(outputValue);
+          
+          console.log('✨ After parsing - Input content:', typeof inputContent, inputContent);
+          console.log('✨ After parsing - Output content:', typeof outputContent, outputContent);
+          
+          // Apply span kind specific formatting
+          const spanKind = spanNode?.spanKind || null;
+          console.log('🏷️ Span kind before formatter:', spanKind);
+          
+          const formattedContent = spanKindFormatter(spanKind, inputContent, outputContent);
+          
+          console.log('🎯 Final formatted content:', {
+            input: typeof formattedContent.input,
+            output: typeof formattedContent.output,
+            inputPreview: typeof formattedContent.input === 'string' ? formattedContent.input.substring(0, 100) : formattedContent.input
+          });
+          
+          return {
+            id: context.spanId,
+            traceId: context.traceId,
+            startTime: spanNode?.startTime || null,
+            endTime: spanNode?.endTime || null,
+            input: formattedContent.input,
+            output: formattedContent.output,
+            projectName: projectName,
+            spanName: spanNode?.name || null,
+          };
+        } catch (spanError) {
+          console.error('Error processing individual span:', spanError);
+          return null; // Return null for failed spans
+        }
+      });
+  });
+}
+
+  const filterSpans = (allSpans: (RootSpan | null)[]): RootSpan[] => {
+    return allSpans.filter((rootSpan: any): rootSpan is RootSpan => {
+      if (rootSpan === null) {
+        return false; // Filter out failed spans
+      }
+      
+      const valid = isValidRootSpan(rootSpan);
+      if (!valid) {
+        console.warn('Filtered out incomplete span:', {
+          id: rootSpan?.id,
+          hasInput: rootSpan?.input !== null && rootSpan?.input !== undefined,
+          hasOutput: rootSpan?.output !== null && rootSpan?.output !== undefined,
+          hasStartTime: !!rootSpan?.startTime,
+          hasEndTime: !!rootSpan?.endTime,
+          hasSpanName: !!rootSpan?.spanName
+        });
+      }
+      return valid;
+    });
+  }
 
 function safeJsonParse(value: string | null | undefined): any {
   if (!value || typeof value !== 'string') {
@@ -230,7 +353,7 @@ const spanKindFormatter = (spanKind: string | null, inputContent: any, outputCon
       output: formattedOutput
     };
   } else {
-    console.log('📋 Processing non-LLM/non-Agent span, returning as-is');
+    console.log('📋 Processing Uknown Kind span, returning as-is');
   }
   
   // For non-LLM spans, return as-is
@@ -249,116 +372,7 @@ const isValidRootSpan = (rootSpan: any): boolean => {
   });
 };
 
-const formatRootSpans = (data: any): RootSpan[] => {
-  try {
-    if (!data?.data?.projects?.edges) {
-      console.log('No projects data found');
-      return [];
-    }
 
-    const allSpans = data.data.projects.edges.flatMap((project: any) => {
-      if (!project?.node?.spans?.edges) {
-        console.log('No spans found for project:', project?.node?.name);
-        return [];
-      }
 
-      const projectName = project?.node?.name;
-      if (!projectName) {
-        console.warn('Project missing name, skipping');
-        return [];
-      }
-
-      return project.node.spans.edges
-        .map((span: any) => {
-          try {
-            const spanNode = span?.node;
-            if (!spanNode) {
-              console.warn('Span node is missing, skipping');
-              return null;
-            }
-
-            const context = spanNode?.context;
-            if (!context?.spanId || !context?.traceId) {
-              console.warn('Span missing required context (spanId/traceId), skipping');
-              return null;
-            }
-
-            console.log('🚀 Processing span:', context.spanId);
-            console.log('📊 Raw span data:', {
-              spanKind: spanNode?.spanKind,
-              inputValue: spanNode?.input?.value?.substring(0, 100) + '...',
-              outputValue: spanNode?.output?.value?.substring(0, 100) + '...',
-              inputType: typeof spanNode?.input?.value,
-              outputType: typeof spanNode?.output?.value
-            });
-            
-            // Use safeJsonParse instead of inline JSON.parse
-            const inputValue = spanNode?.input?.value;
-            const outputValue = spanNode?.output?.value;
-            
-            console.log('🔧 Before parsing - Input value:', typeof inputValue, inputValue?.substring(0, 200));
-            console.log('🔧 Before parsing - Output value:', typeof outputValue, outputValue?.substring(0, 200));
-            
-            const inputContent = safeJsonParse(inputValue);
-            const outputContent = safeJsonParse(outputValue);
-            
-            console.log('✨ After parsing - Input content:', typeof inputContent, inputContent);
-            console.log('✨ After parsing - Output content:', typeof outputContent, outputContent);
-            
-            // Apply span kind specific formatting
-            const spanKind = spanNode?.spanKind || null;
-            console.log('🏷️ Span kind before formatter:', spanKind);
-            
-            const formattedContent = spanKindFormatter(spanKind, inputContent, outputContent);
-            
-            console.log('🎯 Final formatted content:', {
-              input: typeof formattedContent.input,
-              output: typeof formattedContent.output,
-              inputPreview: typeof formattedContent.input === 'string' ? formattedContent.input.substring(0, 100) : formattedContent.input
-            });
-            
-            return {
-              id: context.spanId,
-              traceId: context.traceId,
-              startTime: spanNode?.startTime || null,
-              endTime: spanNode?.endTime || null,
-              input: formattedContent.input,
-              output: formattedContent.output,
-              projectName: projectName,
-              spanName: spanNode?.name || null,
-            };
-          } catch (spanError) {
-            console.error('Error processing individual span:', spanError);
-            return null; // Return null for failed spans
-          }
-        })
-        .filter((rootSpan: any) => {
-          if (rootSpan === null) {
-            return false; // Filter out failed spans
-          }
-          
-          const valid = isValidRootSpan(rootSpan);
-          if (!valid) {
-            console.warn('Filtered out incomplete span:', {
-              id: rootSpan?.id,
-              hasInput: rootSpan?.input !== null && rootSpan?.input !== undefined,
-              hasOutput: rootSpan?.output !== null && rootSpan?.output !== undefined,
-              hasStartTime: !!rootSpan?.startTime,
-              hasEndTime: !!rootSpan?.endTime,
-              hasSpanName: !!rootSpan?.spanName
-            });
-          }
-          return valid;
-        });
-    });
-
-    console.log(`📈 Processed ${allSpans.length} valid root spans`);
-    return allSpans;
-
-  } catch (error) {
-    console.error('Error in formatRootSpans:', error);
-    return []; // Return empty array on any formatting error
-  }
-};
 
 export default fetchRootSpans;
