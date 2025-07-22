@@ -3,7 +3,7 @@ import { getTraces, getTrace, deleteTrace } from "../controllers/traceController
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
-import { getQueues, createQueue, getQueue, updateQueue } from "../controllers/queueController";
+import { getQueues, createQueue, getQueue, updateQueue, deleteQueue } from "../controllers/queueController";
 
 // import from controllers here
 
@@ -61,10 +61,13 @@ router.get('/queues', getQueues);
 // POST /api/queues - Create a new queue
 router.post('/queues', createQueue);
 
-// // GET /api/queues/:id - Get a single queue by id
+// GET /api/queues/:id - Get a single queue by id
 router.get('/queues/:id', getQueue);
 
-// // POST /api/queues/:id - Update a single queue by id
+// POST /api/queues/:id - Update a single queue by id
 router.post('/queues/:id', updateQueue);
+
+// DELETE /api/queues/:id - Delete a single queue by id
+router.delete('/queues/:id', deleteQueue);
 
 export default router

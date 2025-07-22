@@ -141,3 +141,20 @@ export const updateQueueById = async (
 
   return { id, name, rootSpanIds };
 };
+
+export const deleteQueueById = async (id: string): Promise<void> => {
+  // ensure queue exists
+  const result = await pool.query(
+    `DELETE FROM queues WHERE id = $1 RETURNING id`,
+    [id]
+  );
+  if (result.rowCount === 0) {
+    throw new QueueNotFoundError(id);
+  }
+
+  // detach all rootSpans from this queue
+  await pool.query(
+    `UPDATE root_spans SET queue_id = NULL WHERE queue_id = $1`,
+    [id]
+  );
+};

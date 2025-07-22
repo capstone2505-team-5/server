@@ -6,6 +6,7 @@ import {
   updateQueueById,
   QueueNotFoundError,
   NewQueue,
+  deleteQueueById
 } from '../services/queueService';
 
 export const getQueues = async (_req: Request, res: Response) => {
@@ -67,5 +68,19 @@ export const updateQueue = async (req: Request, res: Response) => {
     }
     console.error(`Error updating queue ${req.params.id}:`, err);
     res.status(500).json({ error: 'Failed to update queue' });
+  }
+};
+
+export const deleteQueue = async (req: Request, res: Response) => {
+  try {
+    const deletedQueue = await deleteQueueById(req.params.id);
+    res.json({ message: 'Queue deleted successfully', deletedQueue });
+  } catch (err) {
+    if (err instanceof QueueNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    console.error(`Error deleting queue ${req.params.id}:`, err);
+    res.status(500).json({ error: 'Failed to delete queue' });
   }
 };
