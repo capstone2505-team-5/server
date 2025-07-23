@@ -4,10 +4,10 @@ import {
   createNewQueue,
   getQueueById,
   updateQueueById,
-  QueueNotFoundError,
-  NewQueue,
   deleteQueueById
 } from '../services/queueService';
+import { NewQueue } from '../types/types';
+import { QueueNotFoundError } from '../errors/errors';
 
 export const getQueues = async (_req: Request, res: Response) => {
   try {

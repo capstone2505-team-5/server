@@ -1,31 +1,8 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
+import { QueueSummary, QueueDetail, NewQueue } from '../types/types';
+import { QueueNotFoundError } from '../errors/errors';
 
-export class QueueNotFoundError extends Error {
-  constructor(id: string) {
-    super(`Queue with id ${id} not found`);
-    this.name = 'QueueNotFoundError';
-  }
-}
-
-export interface QueueSummary {
-  id: string;
-  name: string;
-  totalSpans: number;
-  annotatedCount: number;
-  goodCount: number;
-}
-
-export interface QueueDetail {
-  id: string;
-  name: string;
-  rootSpanIds: string[];
-}
-
-export interface NewQueue {
-  name: string;
-  rootSpanIds: string[];
-}
 
 export const getAllQueues = async (): Promise<QueueSummary[]> => {
   const query = `

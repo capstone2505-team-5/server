@@ -64,8 +64,8 @@ router.post('/queues', createQueue);
 // GET /api/queues/:id - Get a single queue by id
 router.get('/queues/:id', getQueue);
 
-// POST /api/queues/:id - Update a single queue by id
-router.post('/queues/:id', updateQueue);
+// PUT /api/queues/:id - Update a single queue by id
+router.put('/queues/:id', updateQueue);
 
 // DELETE /api/queues/:id - Delete a single queue by id
 router.delete('/queues/:id', deleteQueue);
