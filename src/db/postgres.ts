@@ -21,9 +21,16 @@ export const initializePostgres = async () => {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS queues (
+        id          VARCHAR(50) PRIMARY KEY,
+        name        TEXT        NOT NULL,
+        created_at  TIMESTAMP   DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS root_spans (
         id VARCHAR(50) PRIMARY KEY,
         trace_id VARCHAR(50) NOT NULL,
+        queue_id VARCHAR(50) REFERENCES queues(id) ON DELETE SET NULL,
         input TEXT NOT NULL,
         output TEXT NOT NULL,
         project_name VARCHAR(50) NOT NULL,

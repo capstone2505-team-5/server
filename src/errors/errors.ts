@@ -11,3 +11,10 @@ export class GPTParseError extends Error {
     this.name = 'GPTParseError';
   }
 }
+
+export class QueueNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Queue with id ${id} not found`);
+    this.name = 'QueueNotFoundError';
+  }
+}

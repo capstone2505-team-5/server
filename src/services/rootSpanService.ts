@@ -11,7 +11,7 @@ export class RootSpanNotFoundError extends Error {
 export const getAllRootSpans = async (): Promise<RootSpan[]> => {
   try {
     const query = `
-      SELECT id, trace_id, input, output, project_name, span_name, start_time, end_time, created_at
+      SELECT id, trace_id, queue_id, input, output, project_name, span_name, start_time, end_time, created_at
       FROM root_spans 
       ORDER BY created_at DESC
     `;
@@ -21,6 +21,7 @@ export const getAllRootSpans = async (): Promise<RootSpan[]> => {
     return result.rows.map(row => ({
       id: row.id,
       traceId: row.trace_id,
+      queueId: row.queue_id,
       input: row.input,
       output: row.output,
       projectName: row.project_name,

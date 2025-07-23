@@ -109,3 +109,22 @@ export interface SpanEdge {
     spanKind?: string;
   };
 }
+
+export interface QueueSummary {
+  id: string;
+  name: string;
+  totalSpans: number;
+  annotatedCount: number;
+  goodCount: number;
+}
+
+export interface QueueDetail {
+  id: string;
+  name: string;
+  rootSpanIds: string[];
+}
+
+export interface NewQueue {
+  name: string;
+  rootSpanIds: string[];
+}
