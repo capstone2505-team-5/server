@@ -14,7 +14,7 @@ export const pool = new Pool({
 export const initializePostgres = async () => {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS batches (
+      CREATE TABLE IF NOT EXISTS queus (
         id          VARCHAR(50) PRIMARY KEY,
         name        TEXT        NOT NULL,
         created_at  TIMESTAMP   DEFAULT NOW()
@@ -28,7 +28,6 @@ export const initializePostgres = async () => {
         trace_count INTEGER NOT NULL,
         last_cursor TEXT NULL
       );
-
 
       CREATE TABLE IF NOT EXISTS root_spans (
         id VARCHAR(50) PRIMARY KEY,
