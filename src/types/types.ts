@@ -56,7 +56,7 @@ export interface Project {
   name: string;
   createdAt: string;
   updatedAt: string;
-  traceCount: number;
+  rootSpanCount: number;
 }
 
 export interface GraphQLResponse {
@@ -112,7 +112,7 @@ export interface SpanEdge {
   };
 }
 
-export interface QueueSummary {
+export interface BatchSummary {
   id: string;
   name: string;
   totalSpans: number;
@@ -120,13 +120,13 @@ export interface QueueSummary {
   goodCount: number;
 }
 
-export interface QueueDetail {
+export interface BatchDetail {
   id: string;
   name: string;
   rootSpanIds: string[];
 }
 
-export interface NewQueue {
+export interface NewBatch {
   name: string;
   rootSpanIds: string[];
 }

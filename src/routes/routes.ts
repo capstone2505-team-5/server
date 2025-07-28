@@ -3,7 +3,7 @@ import { getTraces, getTrace, deleteTrace } from "../controllers/traceController
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
-import { getQueues, createQueue, getQueue, updateQueue, deleteQueue } from "../controllers/queueController";
+import { getBatches, createBatch, getBatch, updateBatch, deleteBatch } from "../controllers/batchController";
 
 // import from controllers here
 
@@ -53,21 +53,21 @@ router.delete('/annotations/:id', deleteAnnotation);
 // GET /api/projects - Get all projects
 router.get('/projects', getProjects);
 
-// QUEUE ROUTES
+// BATCH ROUTES
 
-// GET /api/queues - Get all queues
-router.get('/queues', getQueues);
+// GET /api/batches - Get all batches
+router.get('/batches', getBatches);
 
-// POST /api/queues - Create a new queue
-router.post('/queues', createQueue);
+// POST /api/batches - Create a new batch
+router.post('/batches', createBatch);
 
-// GET /api/queues/:id - Get a single queue by id
-router.get('/queues/:id', getQueue);
+// GET /api/batches/:id - Get a single batch by id
+router.get('/batches/:id', getBatch);
 
-// PUT /api/queues/:id - Update a single queue by id
-router.put('/queues/:id', updateQueue);
+// PUT /api/batches/:id - Update a single batch by id
+router.put('/batches/:id', updateBatch);
 
-// DELETE /api/queues/:id - Delete a single queue by id
-router.delete('/queues/:id', deleteQueue);
+// DELETE /api/batches/:id - Delete a single batch by id
+router.delete('/batches/:id', deleteBatch);
 
 export default router

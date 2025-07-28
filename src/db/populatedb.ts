@@ -16,10 +16,10 @@ export const populateProjectsTable = async (projects: Project[]) => {
   try {
     for (const project of projects) {
       await client.query(
-        `INSERT INTO projects (id, name, created_at, updated_at, trace_count)
+        `INSERT INTO projects (id, name, created_at, updated_at, root_span_count)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (id) DO NOTHING`,
-        [project.id, project.name, project.createdAt, project.updatedAt, project.traceCount]);
+        [project.id, project.name, project.createdAt, project.updatedAt, project.rootSpanCount]);
   
     };
     await client.query('COMMIT');

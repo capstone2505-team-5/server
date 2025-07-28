@@ -1,10 +1,10 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
-import { QueueSummary, QueueDetail, NewQueue } from '../types/types';
-import { QueueNotFoundError } from '../errors/errors';
+import { BatchSummary, BatchDetail, NewBatch } from '../types/types';
+import { BatchNotFoundError } from '../errors/errors';
 
 
-export const getAllQueues = async (): Promise<QueueSummary[]> => {
+export const getAllBatches = async (): Promise<BatchSummary[]> => {
   const query = `
     SELECT
       q.id,
@@ -12,9 +12,9 @@ export const getAllQueues = async (): Promise<QueueSummary[]> => {
       COUNT(rs.id) AS "totalSpans",
       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
-    FROM queues q
+    FROM batches q
     LEFT JOIN root_spans rs
-      ON rs.queue_id = q.id
+      ON rs.batch_id = q.id
     LEFT JOIN annotations a
       ON a.root_span_id = rs.id
     GROUP BY q.id, q.name
@@ -32,23 +32,23 @@ export const getAllQueues = async (): Promise<QueueSummary[]> => {
   }));
 };
 
-export const createNewQueue = async (
-  queue: NewQueue
-): Promise<QueueDetail> => {
+export const createNewBatch = async (
+  batch: NewBatch
+): Promise<BatchDetail> => {
   const id = uuidv4();
-  const { name, rootSpanIds } = queue;
+  const { name, rootSpanIds } = batch;
 
-  // insert new queue record
+  // insert new batch record
   await pool.query(
-    `INSERT INTO queues (id, name) VALUES ($1, $2)`,
+    `INSERT INTO batches (id, name) VALUES ($1, $2)`,
     [id, name]
   );
 
-  // If there are rootSpanIds, attach them to this queue
+  // If there are rootSpanIds, attach them to this batch
   if (rootSpanIds.length > 0) {
     await pool.query(
       `UPDATE root_spans
-         SET queue_id = $1
+         SET batch_id = $1
        WHERE id = ANY($2)`,
       [id, rootSpanIds]
     );
@@ -57,21 +57,21 @@ export const createNewQueue = async (
   return { id, name, rootSpanIds };
 };
 
-export const getQueueById = async (id: string): Promise<QueueDetail> => {
-  // 1) fetch queue record
+export const getBatchById = async (id: string): Promise<BatchDetail> => {
+  // 1) fetch batch record
   const result = await pool.query<{ id: string; name: string }>(
-    `SELECT id, name FROM queues WHERE id = $1`,
+    `SELECT id, name FROM batches WHERE id = $1`,
     [id]
   );
 
   if (result.rowCount === 0) {
-    throw new QueueNotFoundError(id);
+    throw new BatchNotFoundError(id);
   }
   const { name } = result.rows[0];
 
   // 2) fetch assigned spans
   const spans = await pool.query<{ id: string }>(
-    `SELECT id FROM root_spans WHERE queue_id = $1`,
+    `SELECT id FROM root_spans WHERE batch_id = $1`,
     [id]
   );
   const rootSpanIds = spans.rows.map(span => span.id);
@@ -80,28 +80,28 @@ export const getQueueById = async (id: string): Promise<QueueDetail> => {
 };
 
 /**
- * Update a queue’s name and its set of assigned rootSpanIds
+ * Update a batch’s name and its set of assigned rootSpanIds
  */
-export const updateQueueById = async (
+export const updateBatchById = async (
   id: string,
-  queue: NewQueue
-): Promise<QueueDetail> => {
-  const { name, rootSpanIds } = queue;
+  batch: NewBatch
+): Promise<BatchDetail> => {
+  const { name, rootSpanIds } = batch;
 
-  // ensure queue exists & update its name
+  // ensure batch exists & update its name
   const result = await pool.query(
-    `UPDATE queues SET name = $1 WHERE id = $2 RETURNING id`,
+    `UPDATE batches SET name = $1 WHERE id = $2 RETURNING id`,
     [name, id]
   );
   if (result.rowCount === 0) {
-    throw new QueueNotFoundError(id);
+    throw new BatchNotFoundError(id);
   }
 
-  // detach any spans no longer in this queue
+  // detach any spans no longer in this batch
   await pool.query(
     `UPDATE root_spans
-       SET queue_id = NULL
-     WHERE queue_id = $1
+       SET batch_id = NULL
+     WHERE batch_id = $1
        AND id <> ALL($2)`,
     [id, rootSpanIds]
   );
@@ -110,7 +110,7 @@ export const updateQueueById = async (
   if (rootSpanIds.length > 0) {
     await pool.query(
       `UPDATE root_spans
-         SET queue_id = $1
+         SET batch_id = $1
        WHERE id = ANY($2)`,
       [id, rootSpanIds]
     );
@@ -119,19 +119,19 @@ export const updateQueueById = async (
   return { id, name, rootSpanIds };
 };
 
-export const deleteQueueById = async (id: string): Promise<void> => {
-  // ensure queue exists
+export const deleteBatchById = async (id: string): Promise<void> => {
+  // ensure batch exists
   const result = await pool.query(
-    `DELETE FROM queues WHERE id = $1 RETURNING id`,
+    `DELETE FROM batches WHERE id = $1 RETURNING id`,
     [id]
   );
   if (result.rowCount === 0) {
-    throw new QueueNotFoundError(id);
+    throw new BatchNotFoundError(id);
   }
 
-  // detach all rootSpans from this queue
+  // detach all rootSpans from this batch
   await pool.query(
-    `UPDATE root_spans SET queue_id = NULL WHERE queue_id = $1`,
+    `UPDATE root_spans SET batch_id = NULL WHERE batch_id = $1`,
     [id]
   );
 };

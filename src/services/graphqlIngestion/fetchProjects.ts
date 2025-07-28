@@ -13,7 +13,7 @@ export const fetchProjects = async (): Promise<Project[] | undefined> => {
             name
             id
             createdAt
-            updatedAt
+            endTime
             traceCount
           }
         }
@@ -34,8 +34,8 @@ const formatProjects = (data: any): Project[] => {
     id: edge.node.id,
     name: edge.node.name,
     createdAt: edge.node.createdAt,
-    updatedAt: edge.node.updatedAt,
-    traceCount: edge.node.traceCount,
+    updatedAt: edge.node.endTime,
+    rootSpanCount: edge.node.traceCount,
   }));
 };
 
