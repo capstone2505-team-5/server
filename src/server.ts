@@ -1,12 +1,20 @@
 import app from "./app";
 import config from "./config/config";
-import { populateAllMockData, populateRootSpansTable } from "./db/populatedb";
+import { populateAllMockData, populateRootSpansTable, populateProjectsTable } from "./db/populatedb";
 import { initializePostgres } from "./db/postgres";
 import { pool } from "./db/postgres";
+import { fetchProjects } from './services/graphqlIngestion/fetchProjects';
 
 async function startServer() {
   await initializePostgres();
+  const projects = await fetchProjects();
 
+  if (!projects) {
+    console.log('no projects found');
+  } else {
+    await populateProjectsTable(projects);
+  }
+  
   //await populateAllMockData(); // DEV MODE - resets annotations and rootspans
 
   if(process.env.NODE_ENV === "development") {

@@ -55,6 +55,8 @@ export interface Project {
   id: string;
   name: string;
   createdAt: string;
+  updatedAt: string;
+  traceCount: number;
 }
 
 export interface GraphQLResponse {

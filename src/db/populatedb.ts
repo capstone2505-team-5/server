@@ -1,13 +1,33 @@
 import traces from "../db/rawRecipeData.json"
 import { pool } from "./postgres"
 import { mockAnnotations } from "./mockData";
-import { RootSpan } from "../types/types";
+import { RootSpan, Project } from "../types/types";
 
 export async function populateAllMockData() {
   await resetAnnotationTable(); //dev mode only
   await resetRootSpansTable(); //dev mode only
   //await populateTracesTable();
   //await populateAnnotationsTable();
+}
+
+export const populateProjectsTable = async (projects: Project[]) => {
+  const client = await pool.connect();
+  await client.query('BEGIN');
+  try {
+    for (const project of projects) {
+      await client.query(
+        `INSERT INTO projects (id, name, created_at, updated_at, trace_count)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (id) DO NOTHING`,
+        [project.id, project.name, project.createdAt, project.updatedAt, project.traceCount]);
+  
+    };
+    await client.query('COMMIT');
+    console.log('Project data successfully added');
+  } catch(e) {
+    console.error(e);
+    throw e;
+  }
 }
 
 export const populateRootSpansTable = async (rootSpans: RootSpan[]) => {

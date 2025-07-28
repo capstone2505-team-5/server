@@ -1,10 +1,10 @@
 import { Request, Response } from "express";    
-import fetchProjects from "../services/graphqlIngestion/fetchProjects";
+import { getAllProjects } from '../services/projectService';
 
 
 export const getProjects = async (req: Request, res: Response) => {
   try {
-    const projects = await fetchProjects();
+    const projects = await getAllProjects();
     res.json(projects);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch root spans' });
