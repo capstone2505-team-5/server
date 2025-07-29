@@ -38,10 +38,10 @@ export const populateRootSpansTable = async (rootSpans: RootSpan[]) => {
   try {
     for (const rootSpan of rootSpans) {
       await client.query(
-        `INSERT INTO root_spans (id, trace_id, input, output, project_name, span_name, start_time, end_time)
+        `INSERT INTO root_spans (id, trace_id, input, output, project_id, span_name, start_time, end_time)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          ON CONFLICT (id) DO NOTHING`,
-        [rootSpan.id, rootSpan.traceId, rootSpan.input, rootSpan.output, rootSpan.projectName,
+        [rootSpan.id, rootSpan.traceId, rootSpan.input, rootSpan.output, rootSpan.projectId,
         rootSpan.spanName, rootSpan.startTime, rootSpan.endTime]);
     }
     await client.query('COMMIT');
