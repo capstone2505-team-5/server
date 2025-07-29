@@ -35,7 +35,16 @@ export const getAllRootSpans = async (): Promise<AnnotatedRootSpan[]> => {
           LEFT JOIN categories c ON ac.category_id = c.id
 
           GROUP BY 
-            r.id, r.trace_id, r.batch_id, r.input, r.output, r.project_id, r.span_name, r.start_time, r.end_time, r.created_at,
+            r.id, 
+            r.trace_id, 
+            r.batch_id, 
+            r.input, 
+            r.output, 
+            r.project_id, 
+            r.span_name, 
+            r.start_time, 
+            r.end_time, 
+            r.created_at,
             a.id, a.note, a.rating
 
           ORDER BY r.created_at DESC;

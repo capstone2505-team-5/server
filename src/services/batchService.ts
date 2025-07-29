@@ -5,10 +5,10 @@ import { BatchNotFoundError } from '../errors/errors';
 
 
 export const getAllBatches = async (): Promise<BatchSummary[]> => {
-  const query = `
+  const batch = `
     SELECT
-      q.id,
-      q.name,
+      b.id,
+      b.name,
       COUNT(rs.id) AS "totalSpans",
       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
@@ -21,7 +21,7 @@ export const getAllBatches = async (): Promise<BatchSummary[]> => {
     ORDER BY b.name;
   `;
 
-  const result = await pool.query(query);
+  const result = await pool.query(batch);
 
   return result.rows.map(row => ({
     id: row.id,
