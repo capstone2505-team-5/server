@@ -27,6 +27,8 @@ export const populateProjectsTable = async (projects: Project[]) => {
   } catch(e) {
     console.error(e);
     throw e;
+  } finally { 
+    client.release();
   }
 }
 
