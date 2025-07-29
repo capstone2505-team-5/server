@@ -3,24 +3,29 @@ import config from "./config/config";
 import { populateAllMockData, populateRootSpansTable } from "./db/populatedb";
 import { initializePostgres } from "./db/postgres";
 import { pool } from "./db/postgres";
-import fetchRootSpans from "./services/graphqlIngestion/fetchRootSpans";
 
 async function startServer() {
   await initializePostgres();
 
-  await populateAllMockData(); // DEV MODE - resets annotations and rootspans
+  //await populateAllMockData(); // DEV MODE - resets annotations and rootspans
 
-  const rootSpans = await fetchRootSpans();
-  if(rootSpans){
-    await populateRootSpansTable(rootSpans);
+  if(process.env.NODE_ENV === "development") {
+    try {
+      const response = await fetch('http://localhost:8080/fetchRootSpans');
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+      }
+      console.log("Successfully fetched root spans")
+    } catch (err) {
+      console.error(err);
+      console.log('Error fetching root spans');
+    }
   }
-
+  
   
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
   });
-
-
 }
 
 startServer().catch(err => {
