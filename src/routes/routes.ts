@@ -9,16 +9,16 @@ import { getQueues, createQueue, getQueue, updateQueue, deleteQueue } from "../c
 
 const router = Router();
 
-// TRACES ROUTES
+// // TRACES ROUTES
 
-// GET /api/traces - Get all traces
-router.get('/traces', getTraces);
+// // GET /api/traces - Get all traces
+// router.get('/traces', getTraces);
 
-// GET /api/traces/:id - Get a single trace by id
-router.get('/traces/:id', getTrace);
+// // GET /api/traces/:id - Get a single trace by id
+// router.get('/traces/:id', getTrace);
 
-// DELETE /api/traces/:id - Delete a single trace by id
-router.delete('/traces/:id', deleteTrace);
+// // DELETE /api/traces/:id - Delete a single trace by id
+// router.delete('/traces/:id', deleteTrace);
 
 // ROOT SPAN ROUTES
 

@@ -14,17 +14,19 @@ export const pool = new Pool({
 export const initializePostgres = async () => {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS traces (
-        id VARCHAR(50) PRIMARY KEY,
-        input TEXT NOT NULL,
-        output TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-
-      CREATE TABLE IF NOT EXISTS queues (
+      CREATE TABLE IF NOT EXISTS queus (
         id          VARCHAR(50) PRIMARY KEY,
         name        TEXT        NOT NULL,
         created_at  TIMESTAMP   DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS projects (
+        id VARCHAR(50) PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP NULL,
+        trace_count INTEGER NOT NULL,
+        last_cursor TEXT NULL
       );
 
       CREATE TABLE IF NOT EXISTS root_spans (
