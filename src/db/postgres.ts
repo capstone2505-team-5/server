@@ -14,28 +14,30 @@ export const pool = new Pool({
 export const initializePostgres = async () => {
   try {
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS queus (
-        id          VARCHAR(50) PRIMARY KEY,
-        name        TEXT        NOT NULL,
-        created_at  TIMESTAMP   DEFAULT NOW()
-      );
-
       CREATE TABLE IF NOT EXISTS projects (
         id VARCHAR(50) PRIMARY KEY,
         name TEXT NOT NULL,
         created_at TIMESTAMP NOT NULL,
         updated_at TIMESTAMP NULL,
-        trace_count INTEGER NOT NULL,
+        root_span_count INTEGER NOT NULL,
         last_cursor TEXT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS batches (
+        id VARCHAR(50) PRIMARY KEY,
+        project_id VARCHAR(50) REFERENCES projects(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS root_spans (
         id VARCHAR(50) PRIMARY KEY,
         trace_id VARCHAR(50) NOT NULL,
-        queue_id VARCHAR(50) REFERENCES queues(id) ON DELETE SET NULL,
+        batch_id VARCHAR(50) REFERENCES batches(id) ON DELETE SET NULL,
         input TEXT NOT NULL,
         output TEXT NOT NULL,
         project_name VARCHAR(50) NOT NULL,
+        project_id VARCHAR(50) REFERENCES projects(id) NULL,
         span_name VARCHAR(50) NOT NULL,
         start_time TIMESTAMP NOT NULL,
         end_time TIMESTAMP NOT NULL,

@@ -14,11 +14,12 @@ Returns: array of root spans with annotations
   {
     id: string;
     traceId: string;
+    batchId: string;
     startTime: string;
     endTime: string;
     input: string;
     output: string;
-    projectName: string;
+    projectId: string;
     spanName: string;
     annotation: {
       id: string;
@@ -301,8 +302,8 @@ Returns: array of project summaries
   {
     id: string;
     name: string;
-    last_updated: date;
-    span_count: number;
+    updatedAt: date;
+    rootSpanCount: number;
     num_batches: number;
   }
 ]

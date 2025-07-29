@@ -1,12 +1,12 @@
 import { Request, Response } from "express";    
-import { getAllProjects } from '../services/projectService';
+import { getProjectSummaries } from '../services/projectService';
 
 
 export const getProjects = async (req: Request, res: Response) => {
   try {
-    const projects = await getAllProjects();
+    const projects = await getProjectSummaries();
     res.json(projects);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch root spans' });
+    res.status(500).json({ error: 'Failed to fetch projects' });
   }
 };

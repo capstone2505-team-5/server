@@ -12,9 +12,9 @@ export class GPTParseError extends Error {
   }
 }
 
-export class QueueNotFoundError extends Error {
+export class BatchNotFoundError extends Error {
   constructor(id: string) {
-    super(`Queue with id ${id} not found`);
-    this.name = 'QueueNotFoundError';
+    super(`Batch with id ${id} not found`);
+    this.name = 'BatchNotFoundError';
   }
 }

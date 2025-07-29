@@ -43,12 +43,28 @@ export interface CategorizedAnnotation {
 export interface RootSpan {
   id: string;
   traceId: string;
-  startTime: string | null;      // or Date
+  startTime: string | null; 
+  batchId: string | null;     // or Date
   endTime: string | null;        // or Date
   input: string;
   output: string;
-  projectName: string;
+  projectId?: string;
+  projectName?: string;
   spanName: string | null;
+}
+
+export interface AnnotatedRootSpan {
+  id: string;
+  traceId: string;
+  batchId: string | null;  
+  startTime: string | null; 
+  endTime: string | null;        // or Date
+  input: string;
+  output: string;
+  projectId?: string;
+  projectName?: string;
+  spanName: string | null;
+  annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 
 export interface Project {
@@ -56,7 +72,16 @@ export interface Project {
   name: string;
   createdAt: string;
   updatedAt: string;
-  traceCount: number;
+  rootSpanCount: number;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  rootSpanCount: number;
+  numBatches: number;
 }
 
 export interface GraphQLResponse {
@@ -112,7 +137,7 @@ export interface SpanEdge {
   };
 }
 
-export interface QueueSummary {
+export interface BatchSummary {
   id: string;
   name: string;
   totalSpans: number;
@@ -120,13 +145,13 @@ export interface QueueSummary {
   goodCount: number;
 }
 
-export interface QueueDetail {
+export interface BatchDetail {
   id: string;
   name: string;
   rootSpanIds: string[];
 }
 
-export interface NewQueue {
+export interface NewBatch {
   name: string;
   rootSpanIds: string[];
 }
