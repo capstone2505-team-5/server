@@ -43,11 +43,13 @@ export interface CategorizedAnnotation {
 export interface RootSpan {
   id: string;
   traceId: string;
-  startTime: string | null;      // or Date
+  startTime: string | null; 
+  batchId: string | null;     // or Date
   endTime: string | null;        // or Date
   input: string;
   output: string;
-  projectName: string;
+  projectId?: string;
+  projectName?: string;
   spanName: string | null;
 }
 
@@ -57,6 +59,15 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   rootSpanCount: number;
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  rootSpanCount: number;
+  numBatches: number;
 }
 
 export interface GraphQLResponse {

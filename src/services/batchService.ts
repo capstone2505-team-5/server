@@ -12,13 +12,13 @@ export const getAllBatches = async (): Promise<BatchSummary[]> => {
       COUNT(rs.id) AS "totalSpans",
       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
-    FROM batches q
+    FROM batches b
     LEFT JOIN root_spans rs
-      ON rs.batch_id = q.id
+      ON rs.batch_id = b.id
     LEFT JOIN annotations a
       ON a.root_span_id = rs.id
-    GROUP BY q.id, q.name
-    ORDER BY q.name;
+    GROUP BY b.id, b.name
+    ORDER BY b.name;
   `;
 
   const result = await pool.query(query);
