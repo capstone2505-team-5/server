@@ -20,7 +20,7 @@ async function startServer() {
 
   if(process.env.NODE_ENV === "development") {
     try {
-      const response = await fetch('http://localhost:8080/fetchRootSpans');
+      const response = await fetch('http://localhost:8080/fetchAllProjects');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
       }

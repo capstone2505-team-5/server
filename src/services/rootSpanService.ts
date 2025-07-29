@@ -62,7 +62,7 @@ export const getAllRootSpans = async (): Promise<AnnotatedRootSpan[]> => {
           }
       : null;
       return {
-        id: row.id,
+        id: row.root_span_id,
         traceId: row.trace_id,
         batchId: row.batch_id,
         input: row.input,
