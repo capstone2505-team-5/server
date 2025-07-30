@@ -142,8 +142,8 @@ export interface BatchSummary {
   name: string;
   createdAt: string;
   spanCount: number;
-  percentAnnotated: number;
-  percentGood: number;
+  percentAnnotated: number | null;
+  percentGood: number | null;
   categories: string[];
 }
 

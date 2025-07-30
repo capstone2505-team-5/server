@@ -104,6 +104,7 @@ export const getBatchlessSpans = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
+  console.log('test');
   const { name, rootSpanIds }:UpdateBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {

@@ -96,7 +96,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 };
 
 
-export const createNewAnnotation = async (annotation: NewAnnotation) => {
+export const createNewAnnotation = async (annotation: NewAnnotation): Promise<Annotation> => {
   const { rootSpanId, note, rating } = annotation;
   const id = uuidv4();
 
@@ -107,7 +107,16 @@ export const createNewAnnotation = async (annotation: NewAnnotation) => {
       RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; root_span_id: string; note: string; rating: Rating }>(
+    const result = await pool.query
+    <
+      { 
+        id: string; 
+        root_span_id: 
+        string; note: 
+        string; 
+        rating: Rating 
+      }
+    >(
       query,
       [id, rootSpanId, note, rating]
     );

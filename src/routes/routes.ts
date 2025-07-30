@@ -61,10 +61,14 @@ router.get('/projects/:id', getBatchesByProject);
 // Get batch summary and root spans in bach
 router.get('/batches/:id', getBatch);
 
-router.get('/api/batches/:id/edit', getBatchlessSpans);
+// GET /api/batches/:id/edit - Get batchless spans by batch id
+router.get('/batches/:id/edit', getBatchlessSpans);
 
 // POST /api/batches - Create a new batch
 router.post('/batches', createBatch);
+
+// PATCH /api/batches/:id - Update a single batch by id
+router.patch('/batches/:id', updateBatch);
 
 // PUT /api/batches/:id - Update a single batch by id
 router.put('/batches/:id', updateBatch);

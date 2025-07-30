@@ -31,19 +31,19 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       name: string;
       created_at: Date;
       span_count: number;
-      percent_annotated: number;
-      percent_good: number;
+      percent_annotated: number | null;
+      percent_good: number | null;
       categories: string[];
     }>(query, [projectId]);
 
-    return result.rows.map(row => ({
+    return result.rows.map((row): BatchSummary => ({
       id: row.id,
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
       spanCount: row.span_count,
-      percentAnnotated: parseFloat(row.percent_annotated.toFixed(2)),
-      percentGood: parseFloat(row.percent_good.toFixed(2)),
+      percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
+      percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
       categories: row.categories,
     }));
   } catch (error) {
@@ -51,34 +51,6 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
     throw new Error('Failed to fetch batch summaries');
   }
 };
-
-// export const getAllBatches = async (): Promise<BatchSummary[]> => {
-//   const batch = `
-//     SELECT
-//       b.id,
-//       b.name,
-//       COUNT(rs.id) AS "totalSpans",
-//       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
-//       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
-//     FROM batches b
-//     LEFT JOIN root_spans rs
-//       ON rs.batch_id = b.id
-//     LEFT JOIN annotations a
-//       ON a.root_span_id = rs.id
-//     GROUP BY b.id, b.name
-//     ORDER BY b.name;
-//   `;
-
-//   const result = await pool.query(batch);
-
-//   return result.rows.map(row => ({
-//     id: row.id,
-//     name: row.name,
-//     totalSpans: parseInt(row.totalSpans, 10),
-//     annotatedCount: parseInt(row.annotatedCount, 10),
-//     goodCount: parseInt(row.goodCount, 10)
-//   }));
-// };
 
 export const createNewBatch = async (
   batch: NewBatch
@@ -138,9 +110,10 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
  */
 export const updateBatchById = async (
   id: string,
-  batch: UpdateBatch
+  batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
-  const { name, rootSpanIds } = batch;
+  const { name, rootSpanIds } = batchUpdate;
+  console.log('batchUpdate', batchUpdate);
 
   // update and get project_id
   const result = await pool.query(
@@ -208,3 +181,30 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
   };
 };
 
+// export const getAllBatches = async (): Promise<BatchSummary[]> => {
+//   const batch = `
+//     SELECT
+//       b.id,
+//       b.name,
+//       COUNT(rs.id) AS "totalSpans",
+//       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
+//       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
+//     FROM batches b
+//     LEFT JOIN root_spans rs
+//       ON rs.batch_id = b.id
+//     LEFT JOIN annotations a
+//       ON a.root_span_id = rs.id
+//     GROUP BY b.id, b.name
+//     ORDER BY b.name;
+//   `;
+
+//   const result = await pool.query(batch);
+
+//   return result.rows.map(row => ({
+//     id: row.id,
+//     name: row.name,
+//     totalSpans: parseInt(row.totalSpans, 10),
+//     annotatedCount: parseInt(row.annotatedCount, 10),
+//     goodCount: parseInt(row.goodCount, 10)
+//   }));
+// };

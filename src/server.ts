@@ -4,7 +4,6 @@ import { populateAllMockData, populateRootSpansTable, populateProjectsTable } fr
 import { initializePostgres } from "./db/postgres";
 import { pool } from "./db/postgres";
 import { fetchProjects } from './services/graphqlIngestion/fetchProjects';
-import { tempProjectIdFiller } from './services/projectService';
 
 async function startServer() {
   await initializePostgres();

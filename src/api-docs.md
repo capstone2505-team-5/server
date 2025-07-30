@@ -1,12 +1,17 @@
-Updated 07-29-25 3:35pm
+Updated 07-30-25 12:31PM
 
 # API Endpoints
 
 ---
-DONE
 ### GET `/api/rootSpans?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
-Returns: array of root spans with annotations
+Testing:
+- worked in postman
+
+Returns: 
+- array of root spans with annotations
+- paginated and filterable with query params
+- total count is the total amount of spans that matches params
 
 **Response:**
 ```ts
@@ -97,15 +102,18 @@ DONE
 ```
 
 ---
-TESTED IN POSTMAN
 ### POST `/api/annotations`
+- Annotate a span
+- TESTED IN POSTMAN
+- Cannot annotate without a rating
+
 
 **Request Body:**
 ```ts
 {
   rootSpanId: string;
   note: string;
-  rating?: Rating;
+  rating: Rating;
 }
 ```
 
@@ -269,7 +277,7 @@ Creates a new batch
 
 ---
 
-### PATCH `/api/batches/:id`
+### PATCH `/api/batches/:batchId`
 
 Updates a single batch by ID
 
@@ -330,6 +338,7 @@ Returns: array of project summaries
 ---
 
 ### GET `/api/projects/:projectId`
+- Tested with Postman
 
 Returns: array of batch summaries
 
