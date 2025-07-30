@@ -3,12 +3,11 @@ Updated 07-29-25 3:35pm
 # API Endpoints
 
 ---
-
+DONE
 ### GET `/api/rootSpans?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
 Returns: array of root spans with annotations
 
-DONE
 **Response:**
 ```ts
 {
@@ -38,7 +37,7 @@ DONE
 ```
 
 ---
-
+DONE
 ### GET `/api/rootSpans/:id`
 
 Returns: a single root span

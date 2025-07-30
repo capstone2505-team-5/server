@@ -10,28 +10,39 @@ export class AnnotationNotFoundError extends Error {
   }
 }
 
-// These need to be update to join the categories table.
-
 export const getAllAnnotations = async (): Promise<Annotation[]> => {
   try {
     const query = `
-      SELECT id, root_span_id, note, rating 
-      FROM annotations 
-      ORDER BY created_at DESC
+      SELECT 
+        a.id AS annotation_id,
+        a.root_span_id,
+        a.note,
+        a.rating,
+        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+      FROM annotations a
+      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      GROUP BY a.id, a.root_span_id, a.note, a.rating
+      ORDER BY a.created_at DESC
     `;
-    
-    const result = await pool.query(query);
-    
+
+    const result = await pool.query<{
+      annotation_id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+      categories: string[];
+    }>(query);
+
     return result.rows.map(row => ({
-      id: row.id,
+      id: row.annotation_id,
       rootSpanId: row.root_span_id,
-      rating: row.rating,
       note: row.note,
-      categories: []
+      rating: row.rating,
+      categories: row.categories,
     }));
-    
   } catch (error) {
-    console.error('Error fetching annotations:', error);
+    console.error('Error fetching annotations with categories:', error);
     throw new Error('Failed to fetch annotations from database');
   }
 };
@@ -39,24 +50,39 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
 export const getAnnotationById = async (id: string): Promise<Annotation> => {
   try {
     const query = `
-      SELECT id, root_span_id, note, rating 
-      FROM annotations 
-      WHERE id = $1
+      SELECT 
+        a.id AS annotation_id,
+        a.root_span_id,
+        a.note,
+        a.rating,
+        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+      FROM annotations a
+      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      WHERE a.id = $1
+      GROUP BY a.id, a.root_span_id, a.note, a.rating
     `;
 
-    const result = await pool.query<{ id: string; root_span_id: string; rating: Rating, note: string }>(query, [id]);
+    const result = await pool.query<{
+      annotation_id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+      categories: string[];
+    }>(query, [id]);
 
     if (result.rows.length === 0) {
-      throw new AnnotationNotFoundError(id)
+      throw new AnnotationNotFoundError(id);
     }
 
     const row = result.rows[0];
+
     return {
-      id: row.id,
+      id: row.annotation_id,
       rootSpanId: row.root_span_id,
-      rating: row.rating,
       note: row.note,
-      categories: []
+      rating: row.rating,
+      categories: row.categories,
     };
   } catch (error) {
     console.error(`Error fetching annotation with id ${id}:`, error);
@@ -67,7 +93,8 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 
     throw new Error(`Database error while fetching annotation with id ${id}`);
   }
-}
+};
+
 
 export const createNewAnnotation = async (annotation: NewAnnotation) => {
   const { rootSpanId, note, rating } = annotation;
