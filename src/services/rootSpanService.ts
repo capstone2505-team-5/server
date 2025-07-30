@@ -8,50 +8,59 @@ export class RootSpanNotFoundError extends Error {
   }
 }
 
-export const getAllRootSpans = async (): Promise<AnnotatedRootSpan[]> => {
+type RootSpanQueryParams = {
+  batchId?: string;
+  projectId?: string;
+};
+
+export const getAllRootSpans = async ({ batchId, projectId }: RootSpanQueryParams): Promise<AnnotatedRootSpan[]> => {
   try {
-        const query = `
-          SELECT 
-            r.id AS root_span_id,
-            r.trace_id,
-            r.batch_id,
-            r.input,
-            r.output,
-            r.project_id,
-            r.span_name,
-            r.start_time,
-            r.end_time,
-            r.created_at,
+    const whereClauses: string[] = [];
+    const params: (string | number)[] = [];
 
-            a.id AS annotation_id,
-            a.note,
-            a.rating,
+    if (batchId) {
+      params.push(batchId);
+      whereClauses.push(`r.batch_id = $${params.length}`);
+    }
 
-            COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+    if (projectId) {
+      params.push(projectId);
+      whereClauses.push(`r.project_id = $${params.length}`);
+    }
 
-          FROM root_spans r
-          LEFT JOIN annotations a ON r.id = a.root_span_id
-          LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
-          LEFT JOIN categories c ON ac.category_id = c.id
+    const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-          GROUP BY 
-            r.id, 
-            r.trace_id, 
-            r.batch_id, 
-            r.input, 
-            r.output, 
-            r.project_id, 
-            r.span_name, 
-            r.start_time, 
-            r.end_time, 
-            r.created_at,
-            a.id, a.note, a.rating
+    const query = `
+      SELECT 
+        r.id AS root_span_id,
+        r.trace_id,
+        r.batch_id,
+        r.input,
+        r.output,
+        r.project_id,
+        r.span_name,
+        r.start_time,
+        r.end_time,
+        r.created_at,
+        a.id AS annotation_id,
+        a.note,
+        a.rating,
+        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+      FROM root_spans r
+      LEFT JOIN annotations a ON r.id = a.root_span_id
+      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      ${whereSQL}
+      GROUP BY 
+        r.id, r.trace_id, r.batch_id, r.input, r.output, 
+        r.project_id, r.span_name, r.start_time, 
+        r.end_time, r.created_at,
+        a.id, a.note, a.rating
+      ORDER BY r.created_at DESC;
+    `;
 
-          ORDER BY r.created_at DESC;
-        `;
-    
-    const result = await pool.query(query);
-    
+    const result = await pool.query(query, params);
+
     return result.rows.map(row => {
       const ann = row.annotation_id
         ? {
@@ -60,7 +69,8 @@ export const getAllRootSpans = async (): Promise<AnnotatedRootSpan[]> => {
             rating: row.rating,
             categories: row.categories,
           }
-      : null;
+        : null;
+
       return {
         id: row.root_span_id,
         traceId: row.trace_id,
@@ -73,13 +83,14 @@ export const getAllRootSpans = async (): Promise<AnnotatedRootSpan[]> => {
         endTime: row.end_time, 
         created_at: row.created_at,
         annotation: ann,
-     }
+      };
     });
   } catch (error) {
     console.error('Error fetching root spans:', error);
     throw new Error('Failed to fetch root spans from database');
   }
 };
+
 
 export const getRootSpanById = async (id: string) => {
   try {

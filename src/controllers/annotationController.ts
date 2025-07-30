@@ -51,7 +51,7 @@ export const createAnnotation = async (req: Request, res: Response) => {
     }
 
     // Check if rootSpan exists
-    const rootSpans = await getAllRootSpans()
+    const rootSpans = await getAllRootSpans({})
 
     const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
     if (!rootSpanExists) {

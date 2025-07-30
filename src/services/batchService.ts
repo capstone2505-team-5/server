@@ -48,7 +48,7 @@ export const createNewBatch = async (
   if (rootSpanIds.length > 0) {
     await pool.query(
       `UPDATE root_spans
-         SET batch_id = $1
+       SET batch_id = $1
        WHERE id = ANY($2)`,
       [id, rootSpanIds]
     );

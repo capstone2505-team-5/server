@@ -8,6 +8,7 @@ Updated 07-29-25 3:35pm
 
 Returns: array of root spans with annotations
 
+DONE WITHOUT QUERY PARAMS
 **Response:**
 ```ts
 [
@@ -292,6 +293,7 @@ Deletes a batch by ID
 
 ---
 
+DONE
 ### GET `/api/projects/`
 
 Returns: array of project summaries

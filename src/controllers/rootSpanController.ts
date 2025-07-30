@@ -4,7 +4,10 @@ import { getAllRootSpans, getRootSpanById, RootSpanNotFoundError } from "../serv
 
 export const getRootSpans = async (req: Request, res: Response) => {
   try {
-    const rootSpans = await getAllRootSpans()
+    const batchId = req.query.batchId as string | undefined;
+    const projectId = req.query.projectId as string | undefined;
+
+    const rootSpans = await getAllRootSpans({ batchId, projectId })
     res.json(rootSpans);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch root spans' });
