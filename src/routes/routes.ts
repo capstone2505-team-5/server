@@ -74,6 +74,6 @@ router.delete('/batches/:id', deleteBatch);
 // PHOENIX ROUTES
 
 // GET /api/phoenix/dashboard-url - Get the Phoenix dashboard/API URL
-router.get('/phoenix/dashboard-url', getPhoenixDashboardUrl);
+router.get('/phoenixDashboardUrl', getPhoenixDashboardUrl);
 
 export default router
