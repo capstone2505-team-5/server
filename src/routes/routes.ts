@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { getTraces, getTrace, deleteTrace } from "../controllers/traceController";
 import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations, deleteAnnotation, updateAnnotation } from "../controllers/annotationController";
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
-import { getBatches, createBatch, getBatch, updateBatch, deleteBatch } from "../controllers/batchController";
+import { getBatchlessSpans, getBatchesByProject, createBatch, getBatch, updateBatch, deleteBatch } from "../controllers/batchController";
 import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
 
 // import from controllers here
@@ -54,16 +53,18 @@ router.delete('/annotations/:id', deleteAnnotation);
 // GET /api/projects - Get all projects
 router.get('/projects', getProjects);
 
+router.get('/projects/:id', getBatchesByProject);
+
 // BATCH ROUTES
 
-// GET /api/batches - Get all batches
-router.get('/batches', getBatches);
+// GET /api/batches/:batchId?pageNumber=1&numPerPage=20
+// Get batch summary and root spans in bach
+router.get('/batches/:id', getBatch);
+
+router.get('/api/batches/:id/edit', getBatchlessSpans);
 
 // POST /api/batches - Create a new batch
 router.post('/batches', createBatch);
-
-// GET /api/batches/:id - Get a single batch by id
-router.get('/batches/:id', getBatch);
 
 // PUT /api/batches/:id - Update a single batch by id
 router.put('/batches/:id', updateBatch);

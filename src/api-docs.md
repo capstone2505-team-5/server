@@ -37,7 +37,7 @@ Returns: array of root spans with annotations
 ```
 
 ---
-DONE
+DONE FIRST PASS
 ### GET `/api/rootSpans/:id`
 
 Returns: a single root span
@@ -67,7 +67,7 @@ Returns: a single root span
 ---
 
 ### GET `/api/annotations`
-
+DONE
 **Response:**
 ```ts
 [
@@ -84,7 +84,7 @@ Returns: a single root span
 ---
 
 ### GET `/api/annotations/:id`
-
+DONE
 **Response:**
 ```ts
 {
@@ -97,7 +97,7 @@ Returns: a single root span
 ```
 
 ---
-
+TESTED IN POSTMAN
 ### POST `/api/annotations`
 
 **Request Body:**
@@ -166,11 +166,11 @@ Returns: a single root span
 ### Type Definition
 
 ```ts
-type Rating = 'good' | 'bad' | 'none';
+type Rating = 'good' | 'bad';
 ```
 
 ---
-
+DONE FIRST PASS
 ### GET `/api/batches/:batchId?pageNumber=1&numPerPage=20`
 
 Returns: metadata for a batch and paginated root spans.
@@ -178,14 +178,14 @@ Returns: metadata for a batch and paginated root spans.
 **Response:**
 ```ts
 {
-  batchSummary:    {
-                      id: string;
-                      name: string;
-                      span_count: number;
-                      percent_annotated: number;
-                      percent_good: number;
-                      categories: string[];
-                    }
+  batchSummary: {
+                  id: string;
+                  name: string;
+                  span_count: number;
+                  percent_annotated: number;
+                  percent_good: number;
+                  categories: string[];
+                }, 
   rootSpans: [
                 {
                   id: string;
@@ -203,41 +203,47 @@ Returns: metadata for a batch and paginated root spans.
                     categories: string[];
                   };
                 }
-              ]
+              ],
+  totalCount: number;
 }
 
 ```
 
 ---
-
+DONE FIRST PASS
 ### GET `/api/batches/:batchId/edit`
 
-Returns: root spans from this batch and any root spans not associated with any batch.
+Returns: root spans not associated with any batch.
 
 **Response:**
 ```ts
-[
-  {
-    id: string;
-    traceId: string;
-    startTime: string;
-    endTime: string;
-    input: string;
-    output: string;
-    projectName: string;
-    spanName: string;
-    annotation: {
+{
+  batchlessRootSpans: [
+    {
       id: string;
-      note: string;
-      rating: Rating;
-      categories: string[];
-    };
-  }
-]
+      traceId: string;
+      batchId: string;
+      input: string;
+      output: string;
+      projectId: string;
+      spanName: string;
+      startTime: string;
+      endTime: string;
+      createdAt: string;
+      annotation: {
+        id: string;
+        note: string;
+        rating: Rating;
+        categories: string[];
+      };
+    }
+  ];
+  totalCount: number;
+}
 ```
 
 ---
-
+TESTED IN POSTMAN
 ### POST `/api/batches`
 
 Creates a new batch
@@ -246,6 +252,7 @@ Creates a new batch
 ```ts
 {
   name: string;
+  projectId: string;
   rootSpanIds: string[];
 }
 ```
@@ -254,6 +261,7 @@ Creates a new batch
 ```ts
 {
   id: string;
+  projectId: string;
   name: string;
   rootSpanIds: string[];
 }
@@ -277,6 +285,7 @@ Updates a single batch by ID
 ```ts
 {
   id: string;
+  projectId: string;
   name: string;
   rootSpanIds: string[];
 }
@@ -292,6 +301,7 @@ Deletes a batch by ID
 ```ts
 {
   id: string;
+  projectId: string;
   name: string;
   rootSpanIds: string[];
 }
@@ -299,7 +309,7 @@ Deletes a batch by ID
 
 ---
 
-DONE
+DONE FIRST PASS
 ### GET `/api/projects/`
 
 Returns: array of project summaries
@@ -339,7 +349,7 @@ Returns: array of batch summaries
 ```
 
 ---
-
+NOT DONE YET
 ### POST `/api/categorize?batchId=abc123`
 
 Generates categories from annotations in a batch

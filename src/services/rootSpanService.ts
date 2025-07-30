@@ -34,7 +34,6 @@ type RawRootSpanRow = {
   categories: string[];
 };
 
-
 export const getAllRootSpans = async ({
   batchId,
   projectId,
@@ -55,7 +54,10 @@ export const getAllRootSpans = async ({
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
-    if (batchId) {
+    // if batchId is null, show only batchless spans
+    if (batchId === null) {
+      whereClauses.push(`r.batch_id IS NULL`);
+    } else if (batchId !== undefined) {
       params.push(batchId);
       whereClauses.push(`r.batch_id = $${params.length}`);
     }

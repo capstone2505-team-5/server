@@ -1,17 +1,27 @@
 import { Request, Response } from 'express';
 import {
-  getAllBatches,
+  getBatchSummariesByProject,
   createNewBatch,
-  getBatchById,
+  getBatchSummaryById,
   updateBatchById,
   deleteBatchById
 } from '../services/batchService';
-import { NewBatch } from '../types/types';
+import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
+import { getAllRootSpans } from '../services/rootSpanService';
 
-export const getBatches = async (_req: Request, res: Response) => {
+const FIRST_PAGE = 1;
+const DEFAULT_PAGE_QUANTITY = 20;
+
+export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
-    const batches = await getAllBatches();
+    const projectId = req.params.id;
+
+    // if (!projectId) {
+    //   return res.status(400).json({ error: 'projectId is required' });
+    // }
+
+    const batches = await getBatchSummariesByProject(projectId);
     res.json(batches);
   } catch (err) {
     console.error('Error fetching batches:', err);
@@ -20,7 +30,7 @@ export const getBatches = async (_req: Request, res: Response) => {
 };
 
 export const createBatch = async (req: Request, res: Response) => {
-  const { name, rootSpanIds }:NewBatch = req.body;
+  const { name, projectId, rootSpanIds }:NewBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
@@ -28,7 +38,7 @@ export const createBatch = async (req: Request, res: Response) => {
   }
 
   try {
-    const batch = await createNewBatch({ name, rootSpanIds });
+    const batch = await createNewBatch({ name, projectId, rootSpanIds });
     res.status(201).json(batch);
   } catch (err) {
     console.error('Error creating new batch:', err);
@@ -38,8 +48,51 @@ export const createBatch = async (req: Request, res: Response) => {
 
 export const getBatch = async (req: Request, res: Response) => {
   try {
-    const batch = await getBatchById(req.params.id);
-    res.json(batch);
+    const batchId = req.params.id as string | undefined;
+    const projectId = req.query.projectId as string | undefined;
+    const spanName = req.query.spanName as string | undefined;
+
+    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+    
+    const { rootSpans, totalCount } = await getAllRootSpans({
+      batchId,
+      projectId,
+      spanName,
+      pageNumber,
+      numPerPage,
+    });
+
+    const batchSummary = await getBatchSummaryById(req.params.id);
+    res.json({ rootSpans, batchSummary, totalCount });
+  } catch (err) {
+    if (err instanceof BatchNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    console.error(`Error fetching batch ${req.params.id}:`, err);
+    res.status(500).json({ error: 'Failed to fetch batch' });
+  }
+};
+
+export const getBatchlessSpans = async (req: Request, res: Response) => {
+  try {
+    const batchId = undefined;
+    const projectId = req.query.projectId as string | undefined;
+    const spanName = req.query.spanName as string | undefined;
+
+    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+    
+    const { rootSpans, totalCount } = await getAllRootSpans({
+      batchId,
+      projectId,
+      spanName,
+      pageNumber,
+      numPerPage,
+    });
+
+    res.json({ batchlessRootSpans: rootSpans, totalCount });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
@@ -51,7 +104,7 @@ export const getBatch = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
-  const { name, rootSpanIds }:NewBatch = req.body;
+  const { name, rootSpanIds }:UpdateBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });

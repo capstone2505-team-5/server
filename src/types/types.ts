@@ -138,19 +138,29 @@ export interface SpanEdge {
 
 export interface BatchSummary {
   id: string;
+  projectId: string;
   name: string;
-  totalSpans: number;
-  annotatedCount: number;
-  goodCount: number;
+  createdAt: string;
+  spanCount: number;
+  percentAnnotated: number;
+  percentGood: number;
+  categories: string[];
 }
 
 export interface BatchDetail {
   id: string;
+  projectId: string;
   name: string;
   rootSpanIds: string[];
 }
 
 export interface NewBatch {
+  name: string;
+  projectId: string;
+  rootSpanIds: string[];
+}
+
+export interface UpdateBatch {
   name: string;
   rootSpanIds: string[];
 }
