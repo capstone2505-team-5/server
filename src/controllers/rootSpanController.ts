@@ -13,7 +13,7 @@ export const getRootSpans = async (req: Request, res: Response) => {
   const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
 
   try {
-    const { rows, totalCount } = await getAllRootSpans({
+    const { rootSpans, totalCount } = await getAllRootSpans({
       batchId,
       projectId,
       spanName,
@@ -21,7 +21,7 @@ export const getRootSpans = async (req: Request, res: Response) => {
       numPerPage,
     });
 
-    res.json({ rootSpans: rows, totalCount });
+    res.json({ rootSpans, totalCount });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch root spans' });
   }

@@ -8,7 +8,7 @@ Updated 07-29-25 3:35pm
 
 Returns: array of root spans with annotations
 
-DONE WITHOUT QUERY PARAMS
+DONE
 **Response:**
 ```ts
 {
@@ -17,12 +17,13 @@ DONE WITHOUT QUERY PARAMS
       id: string;
       traceId: string;
       batchId: string;
-      startTime: string;
-      endTime: string;
       input: string;
       output: string;
       projectId: string;
       spanName: string;
+      startTime: string;
+      endTime: string;
+      createdAt: string;
       annotation: {
         id: string;
         note: string;
@@ -47,12 +48,14 @@ Returns: a single root span
 {
   id: string;
   traceId: string;
-  startTime: string;
-  endTime: string;
+  batchId: string;
   input: string;
   output: string;
-  projectName: string;
+  projectId: string;
   spanName: string;
+  startTime: string;
+  endTime: string;
+  createdAt: string;
   annotation: {
     id: string;
     note: string;

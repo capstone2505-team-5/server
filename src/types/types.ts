@@ -56,13 +56,13 @@ export interface AnnotatedRootSpan {
   id: string;
   traceId: string;
   batchId: string | null;  
-  startTime: string | null; 
-  endTime: string | null;        // or Date
   input: string;
   output: string;
-  projectId?: string;
-  projectName?: string;
-  spanName: string | null;
+  projectId: string;
+  spanName: string;
+  startTime: string;
+  endTime: string;        // or Date
+  createdAt: string;
   annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 
