@@ -4,6 +4,7 @@ import { categorizeAnnotations, getAnnotation, createAnnotation, getAnnotations,
 import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
 import { getBatches, createBatch, getBatch, updateBatch, deleteBatch } from "../controllers/batchController";
+import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
 
 // import from controllers here
 
@@ -69,5 +70,10 @@ router.put('/batches/:id', updateBatch);
 
 // DELETE /api/batches/:id - Delete a single batch by id
 router.delete('/batches/:id', deleteBatch);
+
+// PHOENIX ROUTES
+
+// GET /api/phoenix/dashboard-url - Get the Phoenix dashboard/API URL
+router.get('/phoenix/dashboard-url', getPhoenixDashboardUrl);
 
 export default router
