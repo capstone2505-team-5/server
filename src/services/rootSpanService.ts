@@ -11,84 +11,105 @@ export class RootSpanNotFoundError extends Error {
 type RootSpanQueryParams = {
   batchId?: string;
   projectId?: string;
+  spanName?: string;
+  pageNumber: number;
+  numPerPage: number;
 };
 
-export const getAllRootSpans = async ({ batchId, projectId }: RootSpanQueryParams): Promise<AnnotatedRootSpan[]> => {
-  try {
-    const whereClauses: string[] = [];
-    const params: (string | number)[] = [];
+export const getAllRootSpans = async ({
+  batchId,
+  projectId,
+  spanName,
+  pageNumber,
+  numPerPage,
+}: RootSpanQueryParams) => {
+  const whereClauses: string[] = [];
+  const params: any[] = [];
 
-    if (batchId) {
-      params.push(batchId);
-      whereClauses.push(`r.batch_id = $${params.length}`);
-    }
+  if (batchId) {
+    params.push(batchId);
+    whereClauses.push(`r.batch_id = $${params.length}`);
+  }
 
-    if (projectId) {
-      params.push(projectId);
-      whereClauses.push(`r.project_id = $${params.length}`);
-    }
+  if (projectId) {
+    params.push(projectId);
+    whereClauses.push(`r.project_id = $${params.length}`);
+  }
 
-    const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  if (spanName) {
+    params.push(spanName);
+    whereClauses.push(`r.span_name = $${params.length}`);
+  }
 
-    const query = `
-      SELECT 
-        r.id AS root_span_id,
-        r.trace_id,
-        r.batch_id,
-        r.input,
-        r.output,
-        r.project_id,
-        r.span_name,
-        r.start_time,
-        r.end_time,
-        r.created_at,
-        a.id AS annotation_id,
-        a.note,
-        a.rating,
-        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
-      FROM root_spans r
-      LEFT JOIN annotations a ON r.id = a.root_span_id
-      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
-      LEFT JOIN categories c ON ac.category_id = c.id
-      ${whereSQL}
-      GROUP BY 
-        r.id, r.trace_id, r.batch_id, r.input, r.output, 
-        r.project_id, r.span_name, r.start_time, 
-        r.end_time, r.created_at,
-        a.id, a.note, a.rating
-      ORDER BY r.created_at DESC;
-    `;
+  const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const result = await pool.query(query, params);
+  const offset = (pageNumber - 1) * numPerPage;
+  params.push(numPerPage, offset);
 
-    return result.rows.map(row => {
-      const ann = row.annotation_id
+  const query = `
+    SELECT 
+      r.id AS root_span_id,
+      r.trace_id,
+      r.batch_id,
+      r.input,
+      r.output,
+      r.project_id,
+      r.span_name,
+      r.start_time,
+      r.end_time,
+      r.created_at,
+      a.id AS annotation_id,
+      a.note,
+      a.rating,
+      COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+    FROM root_spans r
+    LEFT JOIN annotations a ON r.id = a.root_span_id
+    LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
+    LEFT JOIN categories c ON ac.category_id = c.id
+    ${whereSQL}
+    GROUP BY 
+      r.id, r.trace_id, r.batch_id, r.input, r.output, 
+      r.project_id, r.span_name, r.start_time, 
+      r.end_time, r.created_at,
+      a.id, a.note, a.rating
+    ORDER BY r.created_at DESC
+    LIMIT $${params.length - 1}
+    OFFSET $${params.length};
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) FROM root_spans r
+    ${whereSQL}
+  `;
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(query, params),
+    pool.query(countQuery, params.slice(0, params.length - 2)), // exclude limit/offset
+  ]);
+
+  return {
+    rows: dataResult.rows.map(row => ({
+      id: row.root_span_id,
+      traceId: row.trace_id,
+      batchId: row.batch_id,
+      input: row.input,
+      output: row.output,
+      projectId: row.project_id,
+      spanName: row.span_name,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      created_at: row.created_at,
+      annotation: row.annotation_id
         ? {
             id: row.annotation_id,
             note: row.note,
             rating: row.rating,
             categories: row.categories,
           }
-        : null;
-
-      return {
-        id: row.root_span_id,
-        traceId: row.trace_id,
-        batchId: row.batch_id,
-        input: row.input,
-        output: row.output,
-        projectId: row.project_id,
-        spanName: row.span_name,
-        startTime: row.start_time,
-        endTime: row.end_time, 
-        created_at: row.created_at,
-        annotation: ann,
-      };
-    });
-  } catch (error) {
-    console.error('Error fetching root spans:', error);
-    throw new Error('Failed to fetch root spans from database');
-  }
+        : null,
+    })),
+    totalCount: parseInt(countResult.rows[0].count),
+  };
 };
 
 

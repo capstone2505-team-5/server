@@ -51,13 +51,13 @@ export const createAnnotation = async (req: Request, res: Response) => {
     }
 
     // Check if rootSpan exists
-    const rootSpans = await getAllRootSpans({})
+    // const rootSpans = await getAllRootSpans({})
 
-    const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
-    if (!rootSpanExists) {
-      res.status(404).json({ error: 'Root Span not found' });
-      return
-    }
+    // const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
+    // if (!rootSpanExists) {
+    //   res.status(404).json({ error: 'Root Span not found' });
+    //   return
+    // }
     
     // should replace this with a service to get next ID probably
     const annotation = await createNewAnnotation({rootSpanId, note, rating})

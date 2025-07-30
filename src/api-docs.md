@@ -11,25 +11,29 @@ Returns: array of root spans with annotations
 DONE WITHOUT QUERY PARAMS
 **Response:**
 ```ts
-[
-  {
-    id: string;
-    traceId: string;
-    batchId: string;
-    startTime: string;
-    endTime: string;
-    input: string;
-    output: string;
-    projectId: string;
-    spanName: string;
-    annotation: {
+{
+  rootSpans: [
+    {
       id: string;
-      note: string;
-      rating: Rating;
-      categories: string[];
-    };
-  }
-]
+      traceId: string;
+      batchId: string;
+      startTime: string;
+      endTime: string;
+      input: string;
+      output: string;
+      projectId: string;
+      spanName: string;
+      annotation: {
+        id: string;
+        note: string;
+        rating: Rating;
+        categories: string[];
+      };
+    }
+  ];
+  totalCount: number;
+}
+
 ```
 
 ---

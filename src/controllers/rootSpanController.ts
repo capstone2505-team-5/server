@@ -1,18 +1,32 @@
 import { Request, Response } from "express";    
 import { getAllRootSpans, getRootSpanById, RootSpanNotFoundError } from "../services/rootSpanService";
 
+const FIRST_PAGE = 1;
+const DEFAULT_PAGE_QUANTITY = 20;
 
 export const getRootSpans = async (req: Request, res: Response) => {
-  try {
-    const batchId = req.query.batchId as string | undefined;
-    const projectId = req.query.projectId as string | undefined;
+  const batchId = req.query.batchId as string | undefined;
+  const projectId = req.query.projectId as string | undefined;
+  const spanName = req.query.spanName as string | undefined;
 
-    const rootSpans = await getAllRootSpans({ batchId, projectId })
-    res.json(rootSpans);
+  const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
+  const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+
+  try {
+    const { rows, totalCount } = await getAllRootSpans({
+      batchId,
+      projectId,
+      spanName,
+      pageNumber,
+      numPerPage,
+    });
+
+    res.json({ rootSpans: rows, totalCount });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch root spans' });
   }
 };
+
 
 export const getRootSpan = async (req: Request, res: Response) => {
   try {
