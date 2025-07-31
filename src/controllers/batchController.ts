@@ -17,12 +17,13 @@ export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
     const projectId = req.params.id;
 
-    // if (!projectId) {
-    //   return res.status(400).json({ error: 'projectId is required' });
-    // }
+    if (!projectId) {
+      res.status(400).json({ error: 'projectId parameter is required' });
+      return;
+    }
 
     const batches = await getBatchSummariesByProject(projectId);
-    res.json(batches);
+    res.status(200).json(batches);
   } catch (err) {
     console.error('Error fetching batches:', err);
     res.status(500).json({ error: 'Failed to fetch batches' });
@@ -30,7 +31,7 @@ export const getBatchesByProject = async (req: Request, res: Response) => {
 };
 
 export const createBatch = async (req: Request, res: Response) => {
-  const { name, projectId, rootSpanIds }:NewBatch = req.body;
+  const { name, projectId, rootSpanIds }: NewBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });

@@ -1,3 +1,4 @@
+import { error } from "console";
 import { pool } from "../db/postgres";
 import { AnnotatedRootSpan, Rating } from "../types/types";
 
@@ -223,3 +224,22 @@ export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> =>
     throw new Error(`Database error while fetching root span with id ${id}`);
   }
 };
+
+export const rootSpanExists = async (spanId: string): Promise<boolean> => {
+  try {
+    const result = await pool.query(
+      `
+        SELECT 1 FROM root_spans
+        WHERE id = $1
+      `, [spanId]);
+
+      return (result.rowCount ?? 0) > 0;
+
+  } catch (e) {
+    console.error("Database query failed in rootSpanExists:", {
+      spanId,
+      error: error instanceof Error ? error.message : error
+    });
+    throw new Error("Failed to check root span existence");
+  }
+}
