@@ -48,8 +48,7 @@ export interface RootSpan {
   endTime: string | null;        // or Date
   input: string;
   output: string;
-  projectId?: string;
-  projectName?: string;
+  projectId: string;
   spanName: string | null;
 }
 

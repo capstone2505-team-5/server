@@ -1,4 +1,4 @@
-Updated 07-28-25 11:40am
+Updated 07-29-25 3:35pm
 
 # API Endpoints
 
@@ -304,7 +304,7 @@ Returns: array of project summaries
     name: string;
     updatedAt: date;
     rootSpanCount: number;
-    num_batches: number;
+    numBatches: number;
   }
 ]
 ```
@@ -321,9 +321,10 @@ Returns: array of batch summaries
   {
     id: string;
     name: string;
-    span_count: number;
-    percent_annotated: number;
-    percent_good: number;
+    createdAt: string;
+    spanCount: number;
+    percentAnnotated: number;
+    percentGood: number;
     categories: string[];
   }
 ]

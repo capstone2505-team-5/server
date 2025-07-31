@@ -8,19 +8,20 @@ import { tempProjectIdFiller } from './services/projectService';
 
 async function startServer() {
   await initializePostgres();
-  const projects = await fetchProjects();
 
-  if (!projects) {
-    console.log('no projects found');
-  } else {
-    await populateProjectsTable(projects);
-  }
+  // const projects = await fetchProjects();
+
+  // if (!projects) {
+  //   console.log('no projects found');
+  // } else {
+  //   await populateProjectsTable(projects);
+  // }
 
   //await populateAllMockData(); // DEV MODE - resets annotations and rootspans
 
   if(process.env.NODE_ENV === "development") {
     try {
-      const response = await fetch('http://localhost:8080/fetchRootSpans');
+      const response = await fetch('http://localhost:8080/fetchAllProjects');
       if (!response.ok) {
         throw new Error(`HTTP ${response.status} - ${response.statusText}`);
       }
@@ -30,8 +31,6 @@ async function startServer() {
       console.log('Error fetching root spans');
     }
   }
-  
-  await tempProjectIdFiller();
   
   app.listen(config.port, () => {
     console.log(`Server running on port ${config.port}`);
