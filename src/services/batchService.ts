@@ -58,6 +58,22 @@ export const createNewBatch = async (
   const id = uuidv4();
   const { name, rootSpanIds, projectId } = batch;
 
+  // Validate that none of the root spans already belong to a batch
+  if (rootSpanIds.length > 0) {
+    const checkQuery = `
+      SELECT id, batch_id 
+      FROM root_spans 
+      WHERE id = ANY($1) AND batch_id IS NOT NULL
+    `;
+    
+    const conflictResult = await pool.query(checkQuery, [rootSpanIds]);
+    
+    if (conflictResult.rows.length > 0) {
+      const conflictingSpans = conflictResult.rows.map(row => row.id);
+      throw new Error(`Root spans already assigned to batches: ${conflictingSpans.join(', ')}`);
+    }
+  }
+
   // insert new batch record
   await pool.query(
     `INSERT INTO batches (id, project_id, name) VALUES ($1, $2, $3)`,

@@ -1,4 +1,4 @@
-Updated 07-30-25 12:31PM
+Updated July 31, 2025
 
 # API Endpoints
 
@@ -365,11 +365,12 @@ Generates categories from annotations in a batch
 
 **Request Body:** `null`
 
+// The keys will be the category names and the number will be the quantity
 **Response:**
 ```ts
-[
-  [category: string, count: number]
-]
+{
+  [key: string]: number;
+}
 ```
 
 ---

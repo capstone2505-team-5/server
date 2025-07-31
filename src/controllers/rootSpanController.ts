@@ -1,8 +1,6 @@
 import { Request, Response } from "express";    
 import { getAllRootSpans, getRootSpanById, RootSpanNotFoundError } from "../services/rootSpanService";
-
-const FIRST_PAGE = 1;
-const DEFAULT_PAGE_QUANTITY = 20;
+import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY } from '../constants/index';
 
 export const getRootSpans = async (req: Request, res: Response) => {
   const batchId = req.query.batchId as string | undefined;

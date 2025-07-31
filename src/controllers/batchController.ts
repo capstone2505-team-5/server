@@ -9,9 +9,8 @@ import {
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { getAllRootSpans } from '../services/rootSpanService';
+import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY } from '../constants/index';
 
-const FIRST_PAGE = 1;
-const DEFAULT_PAGE_QUANTITY = 20;
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
@@ -33,7 +32,7 @@ export const getBatchesByProject = async (req: Request, res: Response) => {
 export const createBatch = async (req: Request, res: Response) => {
   const { name, projectId, rootSpanIds }: NewBatch = req.body;
 
-  if (!name || !Array.isArray(rootSpanIds)) {
+  if (!name || !projectId || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
     return;
   }
@@ -53,6 +52,12 @@ export const getBatch = async (req: Request, res: Response) => {
     const projectId = req.query.projectId as string | undefined;
     const spanName = req.query.spanName as string | undefined;
 
+    if (!batchId) {
+      console.error("BatchId is required");
+      res.status(400).json({ error: "Failed to get batch" })
+      return
+    }
+
     const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
     const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
     
@@ -64,7 +69,7 @@ export const getBatch = async (req: Request, res: Response) => {
       numPerPage,
     });
 
-    const batchSummary = await getBatchSummaryById(req.params.id);
+    const batchSummary = await getBatchSummaryById(batchId);
     res.json({ rootSpans, batchSummary, totalCount });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {

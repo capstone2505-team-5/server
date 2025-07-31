@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation } from "../types/types";
 
-import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
+import { categorizeBatch } from '../services/annotationCategorizationService';
 import { rootSpanExists } from "../services/rootSpanService";
 
 
@@ -116,9 +116,10 @@ export const deleteAnnotation = async (req: Request, res: Response) => {
   }
 }
 
-export const categorizeAnnotations = async (_req: Request, res: Response) => {
+export const categorizeAnnotations = async (req: Request, res: Response) => {
   try {
-    const result = await categorizeBadAnnotations();
+    const batchId = req.params.batchId;
+    const result = await categorizeBatch(batchId);
     res.status(201).json(result);
   } catch (err) {
     console.error(err);

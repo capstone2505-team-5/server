@@ -23,7 +23,6 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
       LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
       LEFT JOIN categories c ON ac.category_id = c.id
       GROUP BY a.id, a.root_span_id, a.note, a.rating
-      ORDER BY a.created_at DESC
     `;
 
     const result = await pool.query<{
@@ -33,6 +32,45 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
       rating: Rating;
       categories: string[];
     }>(query);
+
+    return result.rows.map(row => ({
+      id: row.annotation_id,
+      rootSpanId: row.root_span_id,
+      note: row.note,
+      rating: row.rating,
+      categories: row.categories,
+    }));
+  } catch (error) {
+    console.error('Error fetching annotations with categories:', error);
+    throw new Error('Failed to fetch annotations from database');
+  }
+};
+
+export const getAnnotationsByBatch = async (batchId: string): Promise<Annotation[]> => {
+  try {
+    const query = `
+      SELECT 
+        a.id AS annotation_id,
+        a.root_span_id,
+        a.note,
+        a.rating,
+        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+      FROM annotations a
+      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
+      LEFT JOIN categories c ON ac.category_id = c.id
+      LEFT JOIN root_spans rs ON a.root_span_id = rs.id
+      LEFT JOIN batches b ON rs.batch_id = b.id
+      WHERE b.id = $1
+      GROUP BY a.id, a.root_span_id, a.note, a.rating
+    `;
+
+    const result = await pool.query<{
+      annotation_id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+      categories: string[];
+    }>(query, [batchId]);
 
     return result.rows.map(row => ({
       id: row.annotation_id,
@@ -111,9 +149,8 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
     <
       { 
         id: string; 
-        root_span_id: 
-        string; note: 
-        string; 
+        root_span_id: string; 
+        note: string; 
         rating: Rating 
       }
     >(
@@ -226,3 +263,37 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
     throw new Error(`Database error while deleting annotation with id ${id}`);
   }
 }
+
+export const clearCategoriesFromAnnotations = async (annotationIds: string[]) => {
+  try {
+    // First, find all categories currently assigned to these annotations
+    const findCategoriesQuery = `
+      SELECT DISTINCT category_id
+      FROM annotation_categories
+      WHERE annotation_id = ANY($1)
+    `;
+
+    const categoriesResult = await pool.query(findCategoriesQuery, [annotationIds]);
+    const categoryIds = categoriesResult.rows.map(row => row.category_id);
+
+    if (categoryIds.length === 0) {
+      console.log('No categories to clear for these annotations');
+      return 0;
+    }
+
+    // Delete the categories (CASCADE will handle annotation_categories)
+    const deleteCategoriesQuery = `
+      DELETE FROM categories
+      WHERE id = ANY($1)
+    `;
+
+    const result = await pool.query(deleteCategoriesQuery, [categoryIds]);
+    
+    console.log(`Deleted ${result.rowCount} categories (cascaded to annotation_categories)`);
+    return result.rowCount;
+
+  } catch (e) {
+    console.error('Error clearing categories from annotations:', e);
+    throw new Error('Error clearing categories from annotations');
+  }
+};
