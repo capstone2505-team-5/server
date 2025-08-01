@@ -35,15 +35,16 @@ export const initializePostgres = async () => {
         trace_id VARCHAR(50) NOT NULL,
         batch_id VARCHAR(50) REFERENCES batches(id) ON DELETE SET NULL,
         input TEXT NOT NULL,
-        formatted_input TEXT,
-        formatted_output TEXT,
-        formatting_status VARCHAR20 DEFAULT 'pending';
         output TEXT NOT NULL,
         project_id VARCHAR(50) REFERENCES projects(id) NOT NULL,
         span_name VARCHAR(50) NOT NULL,
         start_time TIMESTAMP NOT NULL,
         end_time TIMESTAMP NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT NOW(),
+        formatted_input TEXT,
+        formatted_output TEXT,
+        formatting_status VARCHAR(20) DEFAULT 'pending',
+        formatted_at TIMESTAMP
       );  
 
       CREATE TABLE IF NOT EXISTS annotations (

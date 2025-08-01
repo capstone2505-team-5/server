@@ -1,6 +1,7 @@
 import { error } from "console";
 import { pool } from "../db/postgres";
 import { AnnotatedRootSpan, Rating } from "../types/types";
+import { MAX_SPANS_PER_PAGE } from "../constants/index";
 
 export class RootSpanNotFoundError extends Error {
   constructor(id: string) {
@@ -11,7 +12,7 @@ export class RootSpanNotFoundError extends Error {
 
 type RootSpanQueryParams = {
   batchId?: string;
-  projectId?: string;
+  projectId: string;
   spanName?: string;
   pageNumber: number;
   numPerPage: number;
@@ -47,7 +48,7 @@ export const getAllRootSpans = async ({
       throw new Error(`Invalid pageNumber: ${pageNumber}`);
     }
 
-    if (numPerPage < 1 || numPerPage > 100 || !Number.isInteger(numPerPage)) {
+    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
       throw new Error(`Invalid numPerPage: ${numPerPage}`);
     }
 
@@ -262,7 +263,7 @@ export const nullifyBatchId = async (spanId: string, batchId: string): Promise<b
 
 type FetchEditBatchSpansParams = {
   batchId: string;
-  projectId?: string;
+  projectId: string;
   spanName?: string;
   pageNumber: number;
   numPerPage: number;
@@ -281,14 +282,13 @@ export const fetchEditBatchSpans = async ({
       throw new Error(`Invalid pageNumber: ${pageNumber}`);
     }
 
-    if (numPerPage < 1 || numPerPage > 100 || !Number.isInteger(numPerPage)) {
+    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
       throw new Error(`Invalid numPerPage: ${numPerPage}`);
     }
 
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
-    // if batchId is null, show only batchless spans
     if (batchId === undefined) {
       throw new Error("batchId required");
     } else {
@@ -296,7 +296,9 @@ export const fetchEditBatchSpans = async ({
       whereClauses.push(`r.batch_id = $${params.length} OR r.batch_id IS NULL`);
     }
 
-    if (projectId) {
+    if (projectId === undefined) {
+      throw new Error("ProjectId Required");
+    }else {
       params.push(projectId);
       whereClauses.push(`r.project_id = $${params.length}`);
     }

@@ -11,7 +11,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
         b.project_id,
         b.name,
         b.created_at,
-        COUNT(DISTINCT rs.id) AS span_count,
+        COUNT(DISTINCT rs.id) AS valid_root_span_count,
         COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
         COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
         COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
@@ -30,7 +30,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       project_id: string;
       name: string;
       created_at: Date;
-      span_count: number;
+      valid_root_span_count: number;
       percent_annotated: number | null;
       percent_good: number | null;
       categories: string[];
@@ -41,7 +41,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
-      spanCount: row.span_count,
+      validRootSpanCount: row.valid_root_span_count,
       percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
       percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
       categories: row.categories,

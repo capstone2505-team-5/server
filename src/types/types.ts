@@ -70,7 +70,7 @@ export interface ProjectSummary {
   name: string;
   createdAt: string;
   updatedAt: string;
-  rootSpanCount: number;
+  validRootSpanCount: number;
   numBatches: number;
 }
 
@@ -132,7 +132,7 @@ export interface BatchSummary {
   projectId: string;
   name: string;
   createdAt: string;
-  spanCount: number;
+  validRootSpanCount: number;
   percentAnnotated: number | null;
   percentGood: number | null;
   categories: string[];

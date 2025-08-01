@@ -63,7 +63,7 @@ router.get('/projects/:id', getBatchesByProject);
 // Params-> /api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
 router.get('/batches/edit', getEditBatchSpans);
 
-// Params-> /api/batches/:batchId?pageNumber=1&numPerPage=20
+// Params-> /api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20
 // Get batch summary and root spans in bach
 router.get('/batches/:id', getBatch);
 
@@ -83,7 +83,7 @@ router.delete('/batches/:id', deleteBatch);
 router.delete('/batches/:batchId/spans/:spanId', removeSpanFromBatch);
 
 // Format a batch, not stored in DB
-router.post('/')
+// router.post('/')
 
 // PHOENIX ROUTES
 

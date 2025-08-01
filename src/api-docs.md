@@ -5,16 +5,13 @@ Updated July 31, 2025 7:00PM
 ---
 ### GET `/api/rootSpans?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
-Testing:
-- worked in postman
-
 Returns: 
 - array of root spans with annotations
 - paginated and filterable with query params
 - total count is the total amount of spans that matches params
 - if batchId is not present, will only show spans not in a batch
 - pageNumber and numPerPage required
-- if project is left out, currently shows all projects (should probably be changed to required)
+- projectId is required
 
 **Response:**
 ```ts
@@ -45,7 +42,6 @@ Returns:
 ```
 
 ---
-DONE FIRST PASS
 ### GET `/api/rootSpans/:id`
 
 Returns: a single root span
@@ -181,10 +177,10 @@ type Rating = 'good' | 'bad';
 ```
 
 ---
-DONE FIRST PASS
-### GET `/api/batches/:batchId?pageNumber=1&numPerPage=20`
+### GET `/api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20`
 
 Returns: metadata for a batch and paginated root spans.
+- projectId required
 
 **Response:**
 ```ts
@@ -225,7 +221,7 @@ DONE FIRST PASS
 ### GET `/api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
 Returns: root spans not associated with any batch and root spans from the batch
-- batchId, pageNumber, and numPerPage required
+- batchId, projectId, pageNumber, and numPerPage required
 
 **Response:**
 ```ts
@@ -333,7 +329,7 @@ Returns: array of project summaries
     id: string;
     name: string;
     updatedAt: date;
-    rootSpanCount: number;
+    validRootSpanCount: number;
     numBatches: number;
   }
 ]
@@ -353,7 +349,7 @@ Returns: array of batch summaries
     id: string;
     name: string;
     createdAt: string;
-    spanCount: number;
+    validRootSpanCount: number;
     percentAnnotated: number;
     percentGood: number;
     categories: string[];

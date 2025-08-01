@@ -9,7 +9,7 @@ import {
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { getAllRootSpans, nullifyBatchId } from '../services/rootSpanService';
-import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY } from '../constants/index';
+import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY, MAX_SPANS_PER_BATCH } from '../constants/index';
 
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
@@ -37,8 +37,8 @@ export const createBatch = async (req: Request, res: Response) => {
     return;
   }
 
-  if (rootSpanIds.length > 150) {
-    res.status(400).json({ error: "Maximum batch size is 150" });
+  if (rootSpanIds.length > MAX_SPANS_PER_BATCH) {
+    res.status(400).json({ error: `Maximum batch size is ${MAX_SPANS_PER_BATCH}` });
     return;
   }
 
@@ -59,6 +59,12 @@ export const getBatch = async (req: Request, res: Response) => {
 
     if (!batchId) {
       console.error("BatchId is required");
+      res.status(400).json({ error: "Failed to get batch" })
+      return
+    }
+
+    if (!projectId) {
+      console.error("ProjectId is required");
       res.status(400).json({ error: "Failed to get batch" })
       return
     }
@@ -87,11 +93,15 @@ export const getBatch = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
-  console.log('test');
   const { name, rootSpanIds }:UpdateBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
+    return;
+  }
+
+  if (rootSpanIds.length > MAX_SPANS_PER_BATCH) {
+    res.status(400).json({ error: `Maximum batch size is ${MAX_SPANS_PER_BATCH}` });
     return;
   }
 
