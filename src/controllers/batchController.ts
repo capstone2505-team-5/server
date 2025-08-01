@@ -8,7 +8,7 @@ import {
 } from '../services/batchService';
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
-import { getAllRootSpans } from '../services/rootSpanService';
+import { getAllRootSpans, nullifyBatchId } from '../services/rootSpanService';
 import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY } from '../constants/index';
 
 
@@ -144,3 +144,27 @@ export const deleteBatch = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete batch' });
   }
 };
+
+export const removeSpanFromBatch = async (req: Request, res: Response) => {
+  const batchId = req.params.batchId;
+  const spanId = req.params.spanId;
+
+  if (!batchId || !spanId) {
+    res.status(400).json({ error: "spanId and batchId required" })
+    return;
+  }
+  
+  try {
+    const spanRemoved = await nullifyBatchId(spanId, batchId);
+
+    if (!spanRemoved) {
+      res.status(404).json({ error: "Span not found in batch" })
+    }
+
+    res.status(200).json({ message: `Span removed from batch ${batchId}` })
+  } catch (e) {
+    console.error("Unable to remove span from batch", e);
+    res.status(500).json({ error: "Failed to remove span from batch" });
+    return;
+  }
+}

@@ -243,3 +243,20 @@ export const rootSpanExists = async (spanId: string): Promise<boolean> => {
     throw new Error("Failed to check root span existence");
   }
 }
+
+export const nullifyBatchId = async (spanId: string, batchId: string): Promise<boolean> => {
+  try {
+  const query = `
+      UPDATE root_spans
+      SET batch_id = NULL
+      WHERE id = $1 AND batch_id = $2
+    `
+    const result = await pool.query(query, [spanId, batchId]);
+
+    return (result.rowCount ?? 0) > 0;
+
+  } catch(e) {
+    console.error("Database failed to nullify batchId");
+    throw new Error("Span not removed from batch")
+  }
+}
