@@ -7,11 +7,10 @@ import {
     deleteAnnotation, 
     updateAnnotation 
 } from "../controllers/annotationController";
-import { getRootSpan, getRootSpans } from "../controllers/rootSpanController";
+import { getEditBatchSpans, getRootSpan, getRootSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
 import { 
     removeSpanFromBatch, 
-    getBatchlessSpans, 
     getBatchesByProject, 
     createBatch, getBatch, 
     updateBatch, 
@@ -24,6 +23,7 @@ const router = Router();
 // ROOT SPAN ROUTES
 
 // Get all rootSpans
+// Params -> /api/rootSpans?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
 router.get('/rootSpans', getRootSpans);
 
 // Get a single root span by id
@@ -59,12 +59,13 @@ router.get('/projects/:id', getBatchesByProject);
 
 // BATCH ROUTES
 
+// Get batchless spans and spans from the batch
+// Params-> /api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
+router.get('/batches/edit', getEditBatchSpans);
+
 // Params-> /api/batches/:batchId?pageNumber=1&numPerPage=20
 // Get batch summary and root spans in bach
 router.get('/batches/:id', getBatch);
-
-// Get batchless spans by batch id
-router.get('/batches/:id/edit', getBatchlessSpans);
 
 // Create a new batch
 router.post('/batches', createBatch);

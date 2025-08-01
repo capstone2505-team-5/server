@@ -81,34 +81,6 @@ export const getBatch = async (req: Request, res: Response) => {
   }
 };
 
-export const getBatchlessSpans = async (req: Request, res: Response) => {
-  try {
-    const batchId = undefined;
-    const projectId = req.query.projectId as string | undefined;
-    const spanName = req.query.spanName as string | undefined;
-
-    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
-    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
-    
-    const { rootSpans, totalCount } = await getAllRootSpans({
-      batchId,
-      projectId,
-      spanName,
-      pageNumber,
-      numPerPage,
-    });
-
-    res.json({ batchlessRootSpans: rootSpans, totalCount });
-  } catch (err) {
-    if (err instanceof BatchNotFoundError) {
-      res.status(404).json({ error: err.message });
-      return;
-    }
-    console.error(`Error fetching batch ${req.params.id}:`, err);
-    res.status(500).json({ error: 'Failed to fetch batch' });
-  }
-};
-
 export const updateBatch = async (req: Request, res: Response) => {
   console.log('test');
   const { name, rootSpanIds }:UpdateBatch = req.body;

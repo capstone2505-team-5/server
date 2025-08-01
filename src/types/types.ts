@@ -1,12 +1,3 @@
-// Types for the REST API
-
-export interface Trace {
-  id: string;
-  input: string;
-  output: string;
-}
-
-// Subject to change
 export type Rating = 'good' | 'bad';
 
 export interface Annotation {
