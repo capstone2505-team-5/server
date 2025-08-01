@@ -37,6 +37,11 @@ export const createBatch = async (req: Request, res: Response) => {
     return;
   }
 
+  if (rootSpanIds.length > 150) {
+    res.status(400).json({ error: "Maximum batch size is 150" });
+    return;
+  }
+
   try {
     const batch = await createNewBatch({ name, projectId, rootSpanIds });
     res.status(201).json(batch);

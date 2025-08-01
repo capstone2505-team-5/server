@@ -13,8 +13,7 @@ Returns:
 - paginated and filterable with query params
 - total count is the total amount of spans that matches params
 - if batchId is not present, will only show spans not in a batch
-- pageNumber defaults to 1 if missing
-- numPerPage defaults to 20 if missing
+- pageNumber and numPerPage required
 - if project is left out, currently shows all projects (should probably be changed to required)
 
 **Response:**
@@ -226,6 +225,7 @@ DONE FIRST PASS
 ### GET `/api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
 Returns: root spans not associated with any batch and root spans from the batch
+- batchId, pageNumber, and numPerPage required
 
 **Response:**
 ```ts

@@ -58,6 +58,11 @@ export const createNewBatch = async (
   const id = uuidv4();
   const { name, rootSpanIds, projectId } = batch;
 
+   // Validate batch size limit
+  if (rootSpanIds.length > 150) {
+    throw new Error(`Batch size cannot exceed 150 root spans. Provided: ${rootSpanIds.length}`);
+  }
+
   // Validate that none of the root spans already belong to a batch
   if (rootSpanIds.length > 0) {
     const checkQuery = `
