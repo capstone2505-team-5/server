@@ -82,6 +82,9 @@ router.delete('/batches/:id', deleteBatch);
 // Remove a span from a batch (does not actually delete span from DB)
 router.delete('/batches/:batchId/spans/:spanId', removeSpanFromBatch);
 
+// Format a batch, not stored in DB
+router.post('/')
+
 // PHOENIX ROUTES
 
 // Get the Phoenix dashboard/API URL

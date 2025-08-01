@@ -35,6 +35,9 @@ export const initializePostgres = async () => {
         trace_id VARCHAR(50) NOT NULL,
         batch_id VARCHAR(50) REFERENCES batches(id) ON DELETE SET NULL,
         input TEXT NOT NULL,
+        formatted_input TEXT,
+        formatted_output TEXT,
+        formatting_status VARCHAR20 DEFAULT 'pending';
         output TEXT NOT NULL,
         project_id VARCHAR(50) REFERENCES projects(id) NOT NULL,
         span_name VARCHAR(50) NOT NULL,
