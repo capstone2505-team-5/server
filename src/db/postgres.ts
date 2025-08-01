@@ -25,7 +25,7 @@ export const initializePostgres = async () => {
       
       CREATE TABLE IF NOT EXISTS batches (
         id VARCHAR(50) PRIMARY KEY,
-        project_id VARCHAR(50) REFERENCES projects(id) ON DELETE CASCADE,
+        project_id VARCHAR(50) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
       );

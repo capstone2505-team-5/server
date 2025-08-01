@@ -56,13 +56,13 @@ export interface AnnotatedRootSpan {
   id: string;
   traceId: string;
   batchId: string | null;  
-  startTime: string | null; 
-  endTime: string | null;        // or Date
   input: string;
   output: string;
-  projectId?: string;
-  projectName?: string;
-  spanName: string | null;
+  projectId: string;
+  spanName: string;
+  startTime: string;
+  endTime: string;        // or Date
+  createdAt: string;
   annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 
@@ -138,19 +138,29 @@ export interface SpanEdge {
 
 export interface BatchSummary {
   id: string;
+  projectId: string;
   name: string;
-  totalSpans: number;
-  annotatedCount: number;
-  goodCount: number;
+  createdAt: string;
+  spanCount: number;
+  percentAnnotated: number | null;
+  percentGood: number | null;
+  categories: string[];
 }
 
 export interface BatchDetail {
   id: string;
+  projectId: string;
   name: string;
   rootSpanIds: string[];
 }
 
 export interface NewBatch {
+  name: string;
+  projectId: string;
+  rootSpanIds: string[];
+}
+
+export interface UpdateBatch {
   name: string;
   rootSpanIds: string[];
 }
