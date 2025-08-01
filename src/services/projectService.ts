@@ -37,24 +37,3 @@ export const getProjectSummaries = async (): Promise<ProjectSummary[]> => {
     throw new Error('Failed to load project summaries from the database.');
   }
 };
-
-export const tempProjectIdFiller = async () => {
-  try {
-    console.log('🔧 Starting tempProjectIdFiller...');
-
-    const updateQuery = `
-      UPDATE root_spans
-      SET project_id = p.id
-      FROM projects p
-      WHERE root_spans.project_name = p.name
-      AND root_spans.project_id IS NULL;
-    `;
-
-    const result = await pool.query(updateQuery);
-
-    console.log(`✅ tempProjectIdFiller updated ${result.rowCount} rows.`);
-  } catch (error) {
-    console.error('❌ Error in tempProjectIdFiller:', error);
-    throw error;
-  }
-}
