@@ -109,6 +109,9 @@ export const createNewBatch = async (
       );
     }
 
+    console.log(`Attempting to async format batch ${id}`);
+    formatBatch(id);
+
     return { id, projectId, name, rootSpanIds };
   } catch (e) {
     console.error('Failed to create new batch in database.');
@@ -241,13 +244,10 @@ export const formatBatch = async (batchId: string) => {
     const spanSets = await getSpanSets(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
     const formattedSpanSets = await formatAllSpanSets(spanSets);
-    console.log(`${formattedSpanSets} span sets formatted`);
+    console.log(`${formattedSpanSets.length} span sets formatted`);
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
-    console.log(`${updateDbResult.updated} root spans updated in DB`);
-    
-    // if (result) {
-    //   console.log(`Batch ${batchId} has been formatted`);
-    // }
+    console.log(`${updateDbResult.updated} root spans formatted in DB`);
+    await markBatchFormatted(batchId);
   } catch (e) {
     console.error("batch formatting error");
     throw new Error("Error formatting batch");
@@ -281,6 +281,11 @@ const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
     `;
 
     const result = await pool.query(query, [batchId]);
+
+    if (!result.rowCount || result.rowCount < 1) {
+      throw new Error(`cannot find project_id from batch ${batchId}`);
+    }
+
     return result.rows[0].project_id;
   } catch(e) {
     console.error(e);
@@ -421,3 +426,26 @@ const formatSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> 
     throw e;
   }
 };
+
+const markBatchFormatted = async (batchId: string) => {
+  console.log(`markBatchFormatted starting with batchId: ${batchId}`);
+  try {
+    const query = `
+      UPDATE batches
+      SET formatted_at = NOW()
+      WHERE batches.id = $1
+    `
+    const result = await pool.query(query, [batchId]);
+    
+    if (result.rowCount === 0) {
+      // No rows were updated - batch probably doesn't exist
+      throw new Error(`Batch ${batchId} not found`);
+    } else if (result.rowCount === 1) {
+      // Success - exactly one batch was updated
+      console.log(`Batch ${batchId} marked as formatted`);
+    }
+  } catch (e) {
+    console.error("Error marking batch as formatted");
+    throw e;
+  }
+}

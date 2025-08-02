@@ -27,6 +27,7 @@ export const initializePostgres = async () => {
         id VARCHAR(50) PRIMARY KEY,
         project_id VARCHAR(50) NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
+        formatted_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       );
 
