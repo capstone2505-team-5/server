@@ -1,7 +1,8 @@
 import { error } from "console";
 import { pool } from "../db/postgres";
-import { AnnotatedRootSpan, Rating } from "../types/types";
+import { AnnotatedRootSpan, Rating, AllRootSpansResult } from "../types/types";
 import { MAX_SPANS_PER_PAGE } from "../constants/index";
+import type { FormattedSpanSet } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
   constructor(id: string) {
@@ -41,7 +42,7 @@ export const getAllRootSpans = async ({
   spanName,
   pageNumber,
   numPerPage,
-}: RootSpanQueryParams): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+}: RootSpanQueryParams): Promise<AllRootSpansResult> => {
   try {
     // Validate pagination input
     if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
@@ -382,5 +383,39 @@ export const fetchEditBatchSpans = async ({
   } catch (error) {
     console.error("Error in getAllRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
+  }
+};
+
+export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSet[]): Promise<{updated: number}> => {
+  try {
+    // Build the VALUES clause with placeholders
+    const valuesClauses: string[] = [];
+    const params: string[] = [];
+    
+    formattedSpanSets.forEach((spanSet, index) => {
+      const baseIndex = index * 3;
+      valuesClauses.push(`($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3})`);
+      params.push(spanSet.spanId, spanSet.formattedInput, spanSet.formattedOutput);
+    });
+    
+    // FROM clause joins and updates in one operations
+    const query = `
+      UPDATE root_spans 
+      SET 
+        formatted_input = updates.formatted_input,
+        formatted_output = updates.formatted_output,
+        formatting_status = 'completed',
+        formatted_at = NOW()
+      FROM (VALUES ${valuesClauses.join(', ')}) 
+      AS updates(span_id, formatted_input, formatted_output)
+      WHERE root_spans.id = updates.span_id
+    `;
+    
+    console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
+    const result = await pool.query(query, params);
+    return { updated: result.rowCount || 0 };
+  } catch (e) {
+    console.error("failed to insert formatted inputs and outputs into database", e);
+    throw e;
   }
 };

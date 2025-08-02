@@ -1,8 +1,20 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
-import { BatchSummary, BatchDetail, NewBatch, UpdateBatch } from '../types/types';
+import type { 
+  FormattedSpanSet,
+  SpanSet, 
+  AllRootSpansResult, 
+  BatchSummary, 
+  BatchDetail, 
+  NewBatch, 
+  UpdateBatch 
+} from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
-import { Result } from 'pg';
+import { MAX_SPANS_PER_BATCH } from '../constants/index';
+import { getAllRootSpans, insertFormattedSpanSets } from './rootSpanService';
+import { openai } from '../lib/openaiClient';
+import { OpenAIError } from '../errors/errors';
+import { jsonCleanup } from '../utils/jsonCleanup'
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   try {
@@ -205,11 +217,13 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
-    const projectId = await getSpanSets(batchId);
-    // const spanSets = await getSpanSets(batchId);
-    // console.log(spanSets);
-    // const formattedSpanSets = await formatSpanSets(spansets);
-    // const result = await insertFormattedSpanSets(formattedSpanSets);
+    const spanSets = await getSpanSets(batchId);
+    console.log('Spans received');
+    const formattedSpanSets = await formatAllSpanSets(spanSets);
+    console.log("Spans formatted");
+    const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
+    console.log(`${updateDbResult.updated} root spans updated in DB`);
+    
     // if (result) {
     //   console.log(`Batch ${batchId} has been formatted`);
     // }
@@ -219,16 +233,17 @@ export const formatBatch = async (batchId: string) => {
   }
 }
 
-interface SpanSet {
-  input: string;
-  output: string;
-  spanId: string;
-}
-
 const getSpanSets = async (batchId: string): Promise<SpanSet[]> => {
   const projectId = await getProjectIdFromBatch(batchId);
-  console.log(projectId);
-  return [{input: "test", output: "test", spanId: "test"}];
+  const rootSpans = await getAllRootSpans(
+    {
+      batchId,
+      projectId,
+      pageNumber: 1,
+      numPerPage: MAX_SPANS_PER_BATCH,
+    }
+  );
+  return extractSpanSets(rootSpans);
 }
 
 const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
@@ -240,9 +255,138 @@ const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
     `;
 
     const result = await pool.query(query, [batchId]);
-    return result.rows[0];
+    return result.rows[0].project_id;
   } catch(e) {
     console.error(e);
     throw e;
   }
 }
+
+const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
+  const annotatedRootSpans = rootSpanResults.rootSpans;
+
+  return annotatedRootSpans.map(aRS => {
+    return {
+      input: aRS.input,
+      output: aRS.output,
+      spanId: aRS.id,
+    }
+  });
+}
+
+const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
+  const CHUNK_SIZE = 1;
+  
+  // Handle empty case
+  if (spanSets.length === 0) return [];
+  
+  // Split into chunks of 30
+  const chunks: SpanSet[][] = [];
+  for (let i = 0; i < spanSets.length; i += CHUNK_SIZE) {
+    chunks.push(spanSets.slice(i, i + CHUNK_SIZE));
+  }
+  
+  console.log(`Processing ${spanSets.length} spans in ${chunks.length} chunks of max ${CHUNK_SIZE}`);
+  
+  // Process all chunks in parallel with Promise.all
+  const chunkPromises = chunks.map((chunk, index) => {
+    console.log(`Starting chunk ${index + 1}/${chunks.length} (${chunk.length} spans)`);
+    return formatSpanSets(chunk);
+  });
+  
+  const chunkResults = await Promise.all(chunkPromises);
+  
+  // Flatten all results into single array
+  const allResults = chunkResults.flat();
+  
+  console.log(`Successfully formatted ${allResults.length} spans total`);
+  return allResults;
+};
+
+const formatSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
+
+  const systemPrompt = `
+  You are a data formatter. I will provide you with an array of objects, 
+  each containing "input", "output", and "spanId" properties. 
+  Your task is to format the input and output into clean, readable 
+  Markdown while preserving the spanId.
+
+  INSTRUCTIONS:
+  1. Analyze each input/output to determine its content type (email, recipe, JSON, code, plain text, etc.)
+  2. Format each as clean, readable Markdown appropriate for its content type
+  3. Return valid JSON only - no explanations or markdown code blocks around your response
+  
+  EXAMPLE INPUT FORMAT:
+  [
+    {
+      "input": "{"user_input":"red wine opolo winery $50 budget","limit":4,"min_similarity":0.3}",
+      "output": "{{"Opolo Vineyards","7110 Vineyard Dr, Paso Robles, CA 93446","9","10","Showcases crisp sauvignon blanc and rich petit verdot.","0.6053682095251376"}}",
+      "spanId": "0008f44ad2f382fa"
+    },
+    {
+      "input": "Subject: Meeting Tomorrow\\nFrom: john@company.com\\nHi team, let's meet at 2pm to discuss the project.",
+      "output": "Meeting confirmed for 2pm tomorrow. Conference room B is booked.",
+      "spanId": "abc123def456"
+    }
+  ]
+  
+  FORMATTING GUIDELINES:
+  - **JSON/Code**: Remove the code and technical syntax and make it into a human readable format
+  - **Emails**: Format with proper headers (From:, To:, Subject:, etc.)
+  - **Recipes**: Use headers, ingredient lists, numbered steps
+  - **Lists**: Use proper Markdown lists (- or 1.)
+  - **Structured data**: Use tables or organized sections
+  - **Plain text**: Clean up spacing, add line breaks for readability
+  - **Mixed content**: Break into logical sections with headers
+  
+  REQUIRED OUTPUT FORMAT:
+  [
+    {
+      "formattedInput": "markdown formatted version of input",
+      "formattedOutput": "markdown formatted version of output", 
+      "spanId": "exact spanId from original data"
+    }
+  ]
+  
+  IMPORTANT:
+  - All formattedInputs should for formatted identically
+  - All formattedOutputs should be formatted identically
+  - Return ONLY the JSON array, no other text
+  - Preserve all original spanId values exactly as provided
+  - Make formatting decisions based on content, not assumptions
+  - If content appears to be JSON, parse it, but remove all code and technical syntax other than markdown
+  - If content is already well-formatted, improve it but don't over-complicate
+  - Use appropriate Markdown elements: headers (#), lists, code blocks (\`\`\`), tables, etc.`;
+
+  const userContent = JSON.stringify(spanSets, null, 2);
+
+  let raw: string;
+  try {
+    const completion = await openai.chat.completions.create(
+      {
+        model: 'gpt-4o',
+        temperature: 0,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userContent },
+        ],
+      }, 
+      { timeout: 30_000 }, // Increased from 15s to 30s
+    );
+    raw = completion.choices[0].message.content ?? '';
+  } catch (err) {
+    console.error('OpenAI request failed:', err);
+    throw new OpenAIError('OpenAI request failed');
+  }
+
+  const clean = jsonCleanup(raw);
+
+  try {
+    const arr = JSON.parse(clean);
+    if (!Array.isArray(arr)) throw new Error('Not an array');
+    return arr;
+  } catch (e) {
+    console.error('Bad JSON from model:', clean);
+    throw e;
+  }
+};

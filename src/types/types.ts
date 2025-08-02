@@ -155,3 +155,20 @@ export interface UpdateBatch {
   name: string;
   rootSpanIds: string[];
 }
+
+export interface AllRootSpansResult {
+  rootSpans: AnnotatedRootSpan[];
+  totalCount: number;
+}
+
+export interface SpanSet {
+  input: string;
+  output: string;
+  spanId: string;
+}
+
+export interface FormattedSpanSet {
+  formattedInput: string;
+  formattedOutput: string;
+  spanId: string;
+}
