@@ -4,13 +4,13 @@ import {
   createNewBatch,
   getBatchSummaryById,
   updateBatchById,
-  deleteBatchById
+  deleteBatchById,
+  formatBatch,
 } from '../services/batchService';
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { getAllRootSpans, nullifyBatchId } from '../services/rootSpanService';
 import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY, MAX_SPANS_PER_BATCH } from '../constants/index';
-
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
@@ -153,5 +153,17 @@ export const removeSpanFromBatch = async (req: Request, res: Response) => {
     console.error("Unable to remove span from batch", e);
     res.status(500).json({ error: "Failed to remove span from batch" });
     return;
+  }
+}
+
+export const formatBatchByLLM = async (req: Request, res: Response) => {
+  try {
+    const batchId = req.params.batchId;
+    if (batchId === undefined) throw new Error("missing batchId");
+    await formatBatch(batchId);
+    res.status(200).json({message: "success"});
+  } catch (e) {
+    console.error(e);
+    throw e;
   }
 }

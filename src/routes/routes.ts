@@ -14,7 +14,8 @@ import {
     getBatchesByProject, 
     createBatch, getBatch, 
     updateBatch, 
-    deleteBatch 
+    deleteBatch,
+    formatBatchByLLM, 
 } from "../controllers/batchController";
 import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
 
@@ -82,8 +83,8 @@ router.delete('/batches/:id', deleteBatch);
 // Remove a span from a batch (does not actually delete span from DB)
 router.delete('/batches/:batchId/spans/:spanId', removeSpanFromBatch);
 
-// Format a batch, not stored in DB
-// router.post('/')
+// Format a batch
+router.post('/batches/:batchId/format', formatBatchByLLM);
 
 // PHOENIX ROUTES
 

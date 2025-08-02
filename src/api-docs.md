@@ -1,4 +1,4 @@
-Updated July 31, 2025 7:00PM
+Updated: 8-1-25
 
 # API Endpoints
 
@@ -71,7 +71,7 @@ Returns: a single root span
 ---
 
 ### GET `/api/annotations`
-DONE
+
 **Response:**
 ```ts
 [
@@ -88,7 +88,7 @@ DONE
 ---
 
 ### GET `/api/annotations/:id`
-DONE
+
 **Response:**
 ```ts
 {
@@ -103,7 +103,6 @@ DONE
 ---
 ### POST `/api/annotations`
 - Annotate a span
-- TESTED IN POSTMAN
 - Cannot annotate without a rating
 
 
@@ -217,7 +216,7 @@ Returns: metadata for a batch and paginated root spans.
 ```
 
 ---
-DONE FIRST PASS
+
 ### GET `/api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
 Returns: root spans not associated with any batch and root spans from the batch
@@ -251,7 +250,7 @@ Returns: root spans not associated with any batch and root spans from the batch
 ```
 
 ---
-TESTED IN POSTMAN
+
 ### POST `/api/batches`
 
 Creates a new batch
@@ -317,7 +316,13 @@ Deletes a batch by ID
 
 ---
 
-DONE FIRST PASS
+// Format a batch
+router.post('/batches/:batchId/format', formatBatchByLLM);
+
+- request body empty
+---
+
+
 ### GET `/api/projects/`
 
 Returns: array of project summaries

@@ -2,6 +2,7 @@ import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import { BatchSummary, BatchDetail, NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
+import { Result } from 'pg';
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   try {
@@ -201,3 +202,47 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
     rootSpanIds,
   };
 };
+
+export const formatBatch = async (batchId: string) => {
+  try {
+    const projectId = await getSpanSets(batchId);
+    // const spanSets = await getSpanSets(batchId);
+    // console.log(spanSets);
+    // const formattedSpanSets = await formatSpanSets(spansets);
+    // const result = await insertFormattedSpanSets(formattedSpanSets);
+    // if (result) {
+    //   console.log(`Batch ${batchId} has been formatted`);
+    // }
+  } catch (e) {
+    console.error("batch formatting error");
+    throw new Error("Error formatting batch");
+  }
+}
+
+interface SpanSet {
+  input: string;
+  output: string;
+  spanId: string;
+}
+
+const getSpanSets = async (batchId: string): Promise<SpanSet[]> => {
+  const projectId = await getProjectIdFromBatch(batchId);
+  console.log(projectId);
+  return [{input: "test", output: "test", spanId: "test"}];
+}
+
+const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
+  try {
+    const query = `
+      SELECT project_id 
+      FROM batches
+      WHERE batches.id = $1
+    `;
+
+    const result = await pool.query(query, [batchId]);
+    return result.rows[0];
+  } catch(e) {
+    console.error(e);
+    throw e;
+  }
+}
