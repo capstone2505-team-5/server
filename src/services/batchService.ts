@@ -68,75 +68,85 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
 export const createNewBatch = async (
   batch: NewBatch
 ): Promise<BatchDetail> => {
-  const id = uuidv4();
-  const { name, rootSpanIds, projectId } = batch;
+  try {
+    const id = uuidv4();
+    const { name, rootSpanIds, projectId } = batch;
 
-   // Validate batch size limit
-  if (rootSpanIds.length > 150) {
-    throw new Error(`Batch size cannot exceed 150 root spans. Provided: ${rootSpanIds.length}`);
-  }
-
-  // Validate that none of the root spans already belong to a batch
-  if (rootSpanIds.length > 0) {
-    const checkQuery = `
-      SELECT id, batch_id 
-      FROM root_spans 
-      WHERE id = ANY($1) AND batch_id IS NOT NULL
-    `;
-    
-    const conflictResult = await pool.query(checkQuery, [rootSpanIds]);
-    
-    if (conflictResult.rows.length > 0) {
-      const conflictingSpans = conflictResult.rows.map(row => row.id);
-      throw new Error(`Root spans already assigned to batches: ${conflictingSpans.join(', ')}`);
+    // Validate batch size limit
+    if (rootSpanIds.length > 150) {
+      throw new Error(`Batch size cannot exceed 150 root spans. Provided: ${rootSpanIds.length}`);
     }
-  }
 
-  // insert new batch record
-  await pool.query(
-    `INSERT INTO batches (id, project_id, name) VALUES ($1, $2, $3)`,
-    [id, projectId, name]
-  );
+    // Validate that none of the root spans already belong to a batch
+    if (rootSpanIds.length > 0) {
+      const checkQuery = `
+        SELECT id, batch_id 
+        FROM root_spans 
+        WHERE id = ANY($1) AND batch_id IS NOT NULL
+      `;
+      
+      const conflictResult = await pool.query(checkQuery, [rootSpanIds]);
+      
+      if (conflictResult.rows.length > 0) {
+        const conflictingSpans = conflictResult.rows.map(row => row.id);
+        throw new Error(`Root spans already assigned to batches: ${conflictingSpans.join(', ')}`);
+      }
+    }
 
-  // If there are rootSpanIds, attach them to this batch
-  if (rootSpanIds.length > 0) {
+    // insert new batch record
     await pool.query(
-      `UPDATE root_spans
-       SET batch_id = $1
-       WHERE id = ANY($2)`,
-      [id, rootSpanIds]
+      `INSERT INTO batches (id, project_id, name) VALUES ($1, $2, $3)`,
+      [id, projectId, name]
     );
-  }
 
-  return { id, projectId, name, rootSpanIds };
+    // If there are rootSpanIds, attach them to this batch
+    if (rootSpanIds.length > 0) {
+      await pool.query(
+        `UPDATE root_spans
+        SET batch_id = $1
+        WHERE id = ANY($2)`,
+        [id, rootSpanIds]
+      );
+    }
+
+    return { id, projectId, name, rootSpanIds };
+  } catch (e) {
+    console.error('Failed to create new batch in database.');
+    throw e;
+  }
 };
 
 export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary> => {
+  try {
   const query = `
-    SELECT 
-      b.id,
-      b.project_id,
-      b.name,
-      COUNT(DISTINCT rs.id) AS span_count,
-      COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
-      COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
-      COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
-    FROM batches b
-    LEFT JOIN root_spans rs ON rs.batch_id = b.id
-    LEFT JOIN annotations a ON a.root_span_id = rs.id
-    LEFT JOIN annotation_categories ac ON ac.annotation_id = a.id
-    LEFT JOIN categories c ON c.id = ac.category_id
-    WHERE b.id = $1
-    GROUP BY b.id, b.project_id, b.name
-  `;
+      SELECT 
+        b.id,
+        b.project_id,
+        b.name,
+        COUNT(DISTINCT rs.id) AS span_count,
+        COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
+        COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
+        COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+      FROM batches b
+      LEFT JOIN root_spans rs ON rs.batch_id = b.id
+      LEFT JOIN annotations a ON a.root_span_id = rs.id
+      LEFT JOIN annotation_categories ac ON ac.annotation_id = a.id
+      LEFT JOIN categories c ON c.id = ac.category_id
+      WHERE b.id = $1
+      GROUP BY b.id, b.project_id, b.name
+    `;
 
-  const result = await pool.query(query, [batchId]);
+    const result = await pool.query(query, [batchId]);
 
-  if (result.rowCount === 0) {
-    throw new BatchNotFoundError(batchId);
+    if (result.rowCount === 0) {
+      throw new BatchNotFoundError(batchId);
+    }
+
+    return result.rows[0] as BatchSummary;
+  } catch (e) {
+    console.error("failed to get batch in database", e);
+    throw (e);
   }
-
-  return result.rows[0] as BatchSummary;
 };
 
 /**
@@ -146,73 +156,83 @@ export const updateBatchById = async (
   id: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
-  const { name, rootSpanIds } = batchUpdate;
-  console.log('batchUpdate', batchUpdate);
+  try {
+    const { name, rootSpanIds } = batchUpdate;
+    console.log('batchUpdate', batchUpdate);
 
-  // update and get project_id
-  const result = await pool.query(
-    `UPDATE batches SET name = $1 WHERE id = $2 RETURNING id, project_id`,
-    [name, id]
-  );
-  if (result.rowCount === 0) {
-    throw new BatchNotFoundError(id);
-  }
+    // update and get project_id
+    const result = await pool.query(
+      `UPDATE batches SET name = $1 WHERE id = $2 RETURNING id, project_id`,
+      [name, id]
+    );
+    if (result.rowCount === 0) {
+      throw new BatchNotFoundError(id);
+    }
 
-  const { project_id } = result.rows[0];
+    const { project_id } = result.rows[0];
 
-  // detach old spans
-  await pool.query(
-    `UPDATE root_spans
-       SET batch_id = NULL
-     WHERE batch_id = $1
-       AND id <> ALL($2)`,
-    [id, rootSpanIds]
-  );
-
-  // attach new spans
-  if (rootSpanIds.length > 0) {
+    // detach old spans
     await pool.query(
       `UPDATE root_spans
-         SET batch_id = $1
-       WHERE id = ANY($2)`,
+        SET batch_id = NULL
+      WHERE batch_id = $1
+        AND id <> ALL($2)`,
       [id, rootSpanIds]
     );
-  }
 
-  return { id, name, projectId: project_id, rootSpanIds };
+    // attach new spans
+    if (rootSpanIds.length > 0) {
+      await pool.query(
+        `UPDATE root_spans
+          SET batch_id = $1
+        WHERE id = ANY($2)`,
+        [id, rootSpanIds]
+      );
+    }
+
+    return { id, name, projectId: project_id, rootSpanIds };
+  } catch (e) {
+    console.error("failed to update batch in database", e);
+    throw e;
+  }
 };
 
 export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
-  // fetch spans before deletion
-  const spansResult = await pool.query<{ id: string }>(
-    `SELECT id FROM root_spans WHERE batch_id = $1`,
-    [id]
-  );
-  const rootSpanIds = spansResult.rows.map(r => r.id);
+  try {
+    // fetch spans before deletion
+    const spansResult = await pool.query<{ id: string }>(
+      `SELECT id FROM root_spans WHERE batch_id = $1`,
+      [id]
+    );
+    const rootSpanIds = spansResult.rows.map(r => r.id);
 
-  // delete batch and return metadata
-  const result = await pool.query<{
-    id: string;
-    name: string;
-    project_id: string;
-  }>(`
-    DELETE FROM batches
-    WHERE id = $1
-    RETURNING id, name, project_id
-  `, [id]);
+    // delete batch and return metadata
+    const result = await pool.query<{
+      id: string;
+      name: string;
+      project_id: string;
+    }>(`
+      DELETE FROM batches
+      WHERE id = $1
+      RETURNING id, name, project_id
+    `, [id]);
 
-  if (result.rowCount === 0) {
-    throw new BatchNotFoundError(id);
+    if (result.rowCount === 0) {
+      throw new BatchNotFoundError(id);
+    }
+
+    const { id: deletedId, name, project_id } = result.rows[0];
+
+    return {
+      id: deletedId,
+      name,
+      projectId: project_id,
+      rootSpanIds,
+    };
+  } catch (e) {
+    console.error("failed to delete batch in database", e);
+    throw e;
   }
-
-  const { id: deletedId, name, project_id } = result.rows[0];
-
-  return {
-    id: deletedId,
-    name,
-    projectId: project_id,
-    rootSpanIds,
-  };
 };
 
 export const formatBatch = async (batchId: string) => {
@@ -235,16 +255,21 @@ export const formatBatch = async (batchId: string) => {
 }
 
 const getSpanSets = async (batchId: string): Promise<SpanSet[]> => {
-  const projectId = await getProjectIdFromBatch(batchId);
-  const rootSpans = await getAllRootSpans(
-    {
-      batchId,
-      projectId,
-      pageNumber: 1,
-      numPerPage: MAX_SPANS_PER_BATCH,
-    }
-  );
-  return extractSpanSets(rootSpans);
+  try {
+    const projectId = await getProjectIdFromBatch(batchId);
+    const rootSpans = await getAllRootSpans(
+      {
+        batchId,
+        projectId,
+        pageNumber: 1,
+        numPerPage: MAX_SPANS_PER_BATCH,
+      }
+    );
+    return extractSpanSets(rootSpans);
+  } catch (e) {
+    console.error("failed to get span sets sets in database", e);
+    throw e;
+  }
 }
 
 const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
@@ -276,32 +301,37 @@ const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
 }
 
 const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
-  const CHUNK_SIZE = 30;
-  
-  // Handle empty case
-  if (spanSets.length === 0) return [];
-  
-  // Split into chunks of 30
-  const chunks: SpanSet[][] = [];
-  for (let i = 0; i < spanSets.length; i += CHUNK_SIZE) {
-    chunks.push(spanSets.slice(i, i + CHUNK_SIZE));
+  try {
+    const CHUNK_SIZE = 30;
+    
+    // Handle empty case
+    if (spanSets.length === 0) return [];
+    
+    // Split into chunks of 30
+    const chunks: SpanSet[][] = [];
+    for (let i = 0; i < spanSets.length; i += CHUNK_SIZE) {
+      chunks.push(spanSets.slice(i, i + CHUNK_SIZE));
+    }
+    
+    console.log(`Processing ${spanSets.length} spans in ${chunks.length} chunks of max ${CHUNK_SIZE}`);
+    
+    // Process all chunks in parallel with Promise.all
+    const chunkPromises = chunks.map((chunk, index) => {
+      console.log(`Starting chunk ${index + 1}/${chunks.length} (${chunk.length} spans)`);
+      return formatSpanSets(chunk);
+    });
+    
+    const chunkResults = await Promise.all(chunkPromises);
+    
+    // Flatten all results into single array
+    const allResults = chunkResults.flat();
+    
+    console.log(`Successfully formatted ${allResults.length} spans total`);
+    return allResults;
+  } catch (e) {
+    console.error("failed to format all span sets");
+    throw e;
   }
-  
-  console.log(`Processing ${spanSets.length} spans in ${chunks.length} chunks of max ${CHUNK_SIZE}`);
-  
-  // Process all chunks in parallel with Promise.all
-  const chunkPromises = chunks.map((chunk, index) => {
-    console.log(`Starting chunk ${index + 1}/${chunks.length} (${chunk.length} spans)`);
-    return formatSpanSets(chunk);
-  });
-  
-  const chunkResults = await Promise.all(chunkPromises);
-  
-  // Flatten all results into single array
-  const allResults = chunkResults.flat();
-  
-  console.log(`Successfully formatted ${allResults.length} spans total`);
-  return allResults;
 };
 
 const formatSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
