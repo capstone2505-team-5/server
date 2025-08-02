@@ -217,10 +217,11 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
+    console.log(`Starting to format batch ${batchId}`);
     const spanSets = await getSpanSets(batchId);
-    console.log('Spans received');
+    console.log(`${spanSets.length} span sets extracted from batch`);
     const formattedSpanSets = await formatAllSpanSets(spanSets);
-    console.log("Spans formatted");
+    console.log(`${formattedSpanSets} span sets formatted`);
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
     console.log(`${updateDbResult.updated} root spans updated in DB`);
     
@@ -275,7 +276,7 @@ const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
 }
 
 const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
-  const CHUNK_SIZE = 1;
+  const CHUNK_SIZE = 30;
   
   // Handle empty case
   if (spanSets.length === 0) return [];
