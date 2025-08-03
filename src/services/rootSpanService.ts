@@ -2,7 +2,7 @@ import { error } from "console";
 import { pool } from "../db/postgres";
 import { AnnotatedRootSpan, Rating, AllRootSpansResult } from "../types/types";
 import { DEFAULT_PAGE_QUANTITY, FIRST_PAGE, MAX_SPANS_PER_PAGE } from "../constants/index";
-import type { FormattedSpanSet } from '../types/types';
+import type { RootSpanQueryParams, FormattedSpanSet } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
   constructor(id: string) {
@@ -26,14 +26,6 @@ type RawRootSpanRow = {
   note: string | null;
   rating: Rating | null;
   categories: string[];
-};
-
-type RootSpanQueryParams = {
-  batchId: string | undefined;
-  projectId: string | undefined;
-  spanName: string | undefined;
-  pageNumber: string | undefined;
-  numberPerPage: string | undefined;
 };
 
 export const fetchRootSpans = async ({
@@ -269,23 +261,14 @@ export const nullifyBatchId = async (spanId: string, batchId: string): Promise<b
   }
 }
 
-type FetchEditBatchSpansParams = {
-  batchId: string;
-  projectId?: string;
-  spanName?: string;
-  pageNumber?: number;
-  numberPerPage?: number;
-};
-
 export const fetchEditBatchSpans = async ({
   batchId,
-  projectId,
   spanName,
   pageNumber,
   numberPerPage,
-}: FetchEditBatchSpansParams): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
-  const pageNum = pageNumber || FIRST_PAGE;
-  const numPerPage = numberPerPage || DEFAULT_PAGE_QUANTITY;
+}: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
   
   try {
     // Validate pagination input
@@ -307,8 +290,10 @@ export const fetchEditBatchSpans = async ({
       whereClauses.push(`r.batch_id = $${params.length} OR r.batch_id IS NULL`);
     }
 
+    const projectId = await getProjectIdFromBatch(batchId);
+
     if (projectId === undefined) {
-      throw new Error("ProjectId Required");
+      throw new Error("Error fetching projectID from batchId");
     }else {
       params.push(projectId);
       whereClauses.push(`r.project_id = $${params.length}`);
@@ -429,3 +414,24 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
     throw e;
   }
 };
+
+const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
+  try {
+    const query = `
+      SELECT project_id 
+      FROM batches
+      WHERE batches.id = $1
+    `;
+
+    const result = await pool.query(query, [batchId]);
+
+    if (!result.rowCount || result.rowCount < 1) {
+      throw new Error(`cannot find project_id from batch ${batchId}`);
+    }
+
+    return result.rows[0].project_id;
+  } catch(e) {
+    console.error(e);
+    throw e;
+  }
+}

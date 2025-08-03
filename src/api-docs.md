@@ -10,8 +10,7 @@ Returns:
 - paginated and filterable with query params
 - total count is the total amount of spans that matches params
 - if batchId is not present, will only show spans not in a batch
-- pageNumber and numPerPage required
-- projectId is required
+- projectId or batchId required
 
 **Response:**
 ```ts
@@ -179,7 +178,6 @@ type Rating = 'good' | 'bad';
 ### GET `/api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20`
 
 Returns: metadata for a batch and paginated root spans.
-- projectId required
 
 **Response:**
 ```ts

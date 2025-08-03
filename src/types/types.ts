@@ -43,6 +43,14 @@ export interface RootSpan {
   spanName: string | null;
 }
 
+export type RootSpanQueryParams = {
+  batchId: string | undefined;
+  projectId: string | undefined;
+  spanName: string | undefined;
+  pageNumber: string | undefined;
+  numberPerPage: string | undefined;
+};
+
 export interface AnnotatedRootSpan {
   id: string;
   traceId: string;

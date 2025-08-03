@@ -62,11 +62,11 @@ router.get('/projects/:id', getBatchesByProject);
 // BATCH ROUTES
 
 // Get batchless spans and spans from the batch
-// Params-> /api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
+// Params-> /api/batches/edit?batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
 router.get('/batches/edit', getEditBatchSpans);
 
 // Params-> /api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20
-// Get batch summary and root spans in bach
+// Get batch summary and root spans in batch
 router.get('/batches/:id', getBatch);
 
 // Create a new batch

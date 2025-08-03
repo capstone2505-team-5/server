@@ -345,27 +345,6 @@ const getSpanSetsFromBatch = async (batchId: string): Promise<SpanSet[]> => {
   }
 }
 
-const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
-  try {
-    const query = `
-      SELECT project_id 
-      FROM batches
-      WHERE batches.id = $1
-    `;
-
-    const result = await pool.query(query, [batchId]);
-
-    if (!result.rowCount || result.rowCount < 1) {
-      throw new Error(`cannot find project_id from batch ${batchId}`);
-    }
-
-    return result.rows[0].project_id;
-  } catch(e) {
-    console.error(e);
-    throw e;
-  }
-}
-
 const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
   const annotatedRootSpans = rootSpanResults.rootSpans;
 
