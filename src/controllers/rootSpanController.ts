@@ -1,31 +1,26 @@
 import { Request, Response } from "express";    
-import { fetchEditBatchSpans, getAllRootSpans, getRootSpanById, RootSpanNotFoundError } from "../services/rootSpanService";
+import { fetchEditBatchSpans, fetchRootSpans, getRootSpanById, RootSpanNotFoundError } from "../services/rootSpanService";
 import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY, MAX_SPANS_PER_PAGE } from '../constants/index';
 
 export const getRootSpans = async (req: Request, res: Response) => {
   const batchId = req.query.batchId as string | undefined;
   const projectId = req.query.projectId as string | undefined;
   const spanName = req.query.spanName as string | undefined;
+  const pageNumber = req.query.pageNumber as string | undefined;
+  const numberPerPage = req.query.numPerPage as string | undefined;
 
-  const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
-  const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
-
-  if (numPerPage > MAX_SPANS_PER_PAGE) {
-    res.status(400).json({error: `Max spans per page is ${MAX_SPANS_PER_PAGE}`})
-  }
-
-  if (projectId === undefined) {
-    res.status(400).json( {error: "projectId is required"} );
+  if (!projectId && !batchId) {
+    res.status(400).json( {error: "Either projectId or batchID is required"} );
     return;
   }
 
   try {
-    const { rootSpans, totalCount } = await getAllRootSpans({
+    const { rootSpans, totalCount } = await fetchRootSpans({
       batchId,
       projectId,
       spanName,
       pageNumber,
-      numPerPage,
+      numberPerPage,
     });
 
     res.json({ rootSpans, totalCount });
@@ -37,7 +32,12 @@ export const getRootSpans = async (req: Request, res: Response) => {
 
 export const getRootSpan = async (req: Request, res: Response) => {
   try {
-    const rootSpan = await getRootSpanById(req.params.id)
+    const rootSpanId = req.params.id;
+    if (!rootSpanId) {
+      res.status(400).json({error: "rootSpanId is required"});
+    }
+
+    const rootSpan = await getRootSpanById(rootSpanId)
     
     res.json(rootSpan);
   } catch (error) {
@@ -57,7 +57,7 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
     const spanName = req.query.spanName as string | undefined;
 
     const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
-    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+    const numberPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
     
     if (batchId === undefined) {
       res.status(400).json( {error: "batchId is required"} );
@@ -69,7 +69,7 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
       return;
     }
 
-    if (numPerPage > MAX_SPANS_PER_PAGE) {
+    if (numberPerPage > MAX_SPANS_PER_PAGE) {
       res.status(400).json({error: `Max spans per page is ${MAX_SPANS_PER_PAGE}`})
     }
 
@@ -78,7 +78,7 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
       projectId,
       spanName,
       pageNumber,
-      numPerPage,
+      numberPerPage,
     });
 
     res.json({ editBatchRootSpans: rootSpans, totalCount });

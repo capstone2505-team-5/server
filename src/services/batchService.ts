@@ -12,7 +12,7 @@ import type {
 import { BatchNotFoundError } from '../errors/errors';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
 import { 
-  getAllRootSpans, 
+  fetchRootSpans, 
   insertFormattedSpanSets 
 } from './rootSpanService';
 import { openai } from '../lib/openaiClient';
@@ -279,7 +279,7 @@ export const formatBatch = async (batchId: string) => {
     });
 
     console.log(`Starting to format batch ${batchId}`);
-    const spanSets = await getSpanSets(batchId);
+    const spanSets = await getSpanSetsFromBatch(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
 
     sendSSEUpdate(batchId, { 
@@ -327,15 +327,15 @@ export const formatBatch = async (batchId: string) => {
   }
 }
 
-const getSpanSets = async (batchId: string): Promise<SpanSet[]> => {
+const getSpanSetsFromBatch = async (batchId: string): Promise<SpanSet[]> => {
   try {
-    const projectId = await getProjectIdFromBatch(batchId);
-    const rootSpans = await getAllRootSpans(
+    const rootSpans = await fetchRootSpans(
       {
         batchId,
-        projectId,
-        pageNumber: 1,
-        numPerPage: MAX_SPANS_PER_BATCH,
+        projectId: undefined,
+        spanName: undefined,
+        pageNumber: String(1),
+        numberPerPage: String(MAX_SPANS_PER_BATCH),
       }
     );
     return extractSpanSets(rootSpans);
@@ -396,7 +396,7 @@ const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[
     // Process all chunks in parallel with Promise.all
     const chunkPromises = chunks.map((chunk, index) => {
       console.log(`Starting chunk ${index + 1}/${chunks.length} (${chunk.length} spans)`);
-      return formatSpanSets(chunk);
+      return formatSpanSetsChunk(chunk);
     });
     
     const chunkResults = await Promise.all(chunkPromises);
@@ -412,7 +412,7 @@ const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[
   }
 };
 
-const formatSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
+const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
 
   const systemPrompt = `
   You are a data formatter. I will provide you with an array of objects, 

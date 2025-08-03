@@ -1,7 +1,7 @@
 import { error } from "console";
 import { pool } from "../db/postgres";
 import { AnnotatedRootSpan, Rating, AllRootSpansResult } from "../types/types";
-import { MAX_SPANS_PER_PAGE } from "../constants/index";
+import { DEFAULT_PAGE_QUANTITY, FIRST_PAGE, MAX_SPANS_PER_PAGE } from "../constants/index";
 import type { FormattedSpanSet } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
@@ -10,14 +10,6 @@ export class RootSpanNotFoundError extends Error {
     this.name = 'RootSpanNotFoundError';
   }
 }
-
-type RootSpanQueryParams = {
-  batchId?: string;
-  projectId: string;
-  spanName?: string;
-  pageNumber: number;
-  numPerPage: number;
-};
 
 type RawRootSpanRow = {
   root_span_id: string;
@@ -36,28 +28,43 @@ type RawRootSpanRow = {
   categories: string[];
 };
 
-export const getAllRootSpans = async ({
+type RootSpanQueryParams = {
+  batchId: string | undefined;
+  projectId: string | undefined;
+  spanName: string | undefined;
+  pageNumber: string | undefined;
+  numberPerPage: string | undefined;
+};
+
+export const fetchRootSpans = async ({
   batchId,
   projectId,
   spanName,
   pageNumber,
-  numPerPage,
+  numberPerPage,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
   try {
+    const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+
     // Validate pagination input
-    if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
-      throw new Error(`Invalid pageNumber: ${pageNumber}`);
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error(`Invalid page number: ${pageNum}`);
     }
 
     if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
-      throw new Error(`Invalid numPerPage: ${numPerPage}`);
+      throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
+    }
+
+    if (!projectId && !batchId) {
+      throw new Error("Either projectId or batchID is required");
     }
 
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
     // if batchId is undefined, show only batchless spans
-    if (batchId === undefined) {
+    if (!batchId) {
       whereClauses.push(`r.batch_id IS NULL`);
     } else if (batchId !== undefined) {
       params.push(batchId);
@@ -76,7 +83,7 @@ export const getAllRootSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNumber - 1) * numPerPage;
+    const offset = (pageNum - 1) * numPerPage;
     params.push(numPerPage, offset);
 
     const query = `
@@ -264,10 +271,10 @@ export const nullifyBatchId = async (spanId: string, batchId: string): Promise<b
 
 type FetchEditBatchSpansParams = {
   batchId: string;
-  projectId: string;
+  projectId?: string;
   spanName?: string;
-  pageNumber: number;
-  numPerPage: number;
+  pageNumber?: number;
+  numberPerPage?: number;
 };
 
 export const fetchEditBatchSpans = async ({
@@ -275,12 +282,15 @@ export const fetchEditBatchSpans = async ({
   projectId,
   spanName,
   pageNumber,
-  numPerPage,
+  numberPerPage,
 }: FetchEditBatchSpansParams): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  const pageNum = pageNumber || FIRST_PAGE;
+  const numPerPage = numberPerPage || DEFAULT_PAGE_QUANTITY;
+  
   try {
     // Validate pagination input
-    if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
-      throw new Error(`Invalid pageNumber: ${pageNumber}`);
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error(`Invalid pageNum: ${pageNum}`);
     }
 
     if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
@@ -311,7 +321,7 @@ export const fetchEditBatchSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNumber - 1) * numPerPage;
+    const offset = (pageNum - 1) * numPerPage;
     params.push(numPerPage, offset);
 
     const query = `

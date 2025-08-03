@@ -9,8 +9,8 @@ import {
 } from '../services/batchService';
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
-import { getAllRootSpans, nullifyBatchId } from '../services/rootSpanService';
-import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY, MAX_SPANS_PER_BATCH } from '../constants/index';
+import { fetchRootSpans, nullifyBatchId } from '../services/rootSpanService';
+import { MAX_SPANS_PER_BATCH } from '../constants/index';
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
@@ -52,32 +52,25 @@ export const createBatch = async (req: Request, res: Response) => {
 };
 
 export const getBatch = async (req: Request, res: Response) => {
+  const batchId = req.params.id as string | undefined;
+  const projectId = req.query.projectId as string | undefined;
+  const spanName = req.query.spanName as string | undefined;
+  const pageNumber = req.query.pageNumber as string | undefined;
+  const numberPerPage = req.query.numPerPage as string | undefined;
+  
   try {
-    const batchId = req.params.id as string | undefined;
-    const projectId = req.query.projectId as string | undefined;
-    const spanName = req.query.spanName as string | undefined;
-
     if (!batchId) {
       console.error("BatchId is required");
       res.status(400).json({ error: "Failed to get batch" })
       return
     }
-
-    if (!projectId) {
-      console.error("ProjectId is required");
-      res.status(400).json({ error: "Failed to get batch" })
-      return
-    }
-
-    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
-    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
     
-    const { rootSpans, totalCount } = await getAllRootSpans({
+    const { rootSpans, totalCount } = await fetchRootSpans({
       batchId,
       projectId,
       spanName,
       pageNumber,
-      numPerPage,
+      numberPerPage,
     });
 
     const batchSummary = await getBatchSummaryById(batchId);
