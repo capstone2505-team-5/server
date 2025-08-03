@@ -19,6 +19,7 @@ import { openai } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
+import { sendSSEUpdate, closeSSEConnection } from './sseService';
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   try {
@@ -270,16 +271,58 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
+    sendSSEUpdate(batchId, { 
+      status: 'started', 
+      message: 'Batch formatting started',
+      progress: 0,
+      timestamp: new Date().toISOString()
+    });
+
     console.log(`Starting to format batch ${batchId}`);
     const spanSets = await getSpanSets(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
+
+    sendSSEUpdate(batchId, { 
+      status: 'processing', 
+      message: `Processing ${spanSets.length} spans with AI`,
+      progress: 25 
+    });
+
     const formattedSpanSets = await formatAllSpanSets(spanSets);
     console.log(`${formattedSpanSets.length} span sets formatted`);
+
+    sendSSEUpdate(batchId, { 
+      status: 'saving', 
+      message: 'Saving formatted data to database',
+      progress: 75 
+    });
+
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
     console.log(`${updateDbResult.updated} root spans formatted in DB`);
     await markBatchFormatted(batchId);
+
+    sendSSEUpdate(batchId, { 
+      status: 'completed', 
+      message: `Successfully formatted ${updateDbResult.updated} spans`,
+      progress: 100,
+      timestamp: new Date().toISOString()
+    });
+
+    setTimeout(() => closeSSEConnection(batchId), 1000);
   } catch (e) {
     console.error("batch formatting error");
+    
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
+
+    sendSSEUpdate(batchId, { 
+      status: 'failed', 
+      message: 'Batch formatting failed',
+      error: errorMessage,
+      timestamp: new Date().toISOString()
+    })
+
+    setTimeout(() => closeSSEConnection(batchId), 1000);
+
     throw new Error("Error formatting batch");
   }
 }
@@ -458,7 +501,6 @@ const formatSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> 
 };
 
 const markBatchFormatted = async (batchId: string) => {
-  console.log(`markBatchFormatted starting with batchId: ${batchId}`);
   try {
     const query = `
       UPDATE batches
