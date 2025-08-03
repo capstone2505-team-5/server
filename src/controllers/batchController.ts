@@ -81,7 +81,7 @@ export const getBatch = async (req: Request, res: Response) => {
     });
 
     const batchSummary = await getBatchSummaryById(batchId);
-    res.json({ rootSpans, batchSummary, totalCount });
+    res.status(200).json({ rootSpans, batchSummary, totalCount });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
@@ -93,7 +93,13 @@ export const getBatch = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
+  const batchId = req.params.id;
   const { name, rootSpanIds }:UpdateBatch = req.body;
+
+  if (!batchId) {
+    res.status(400).json({error: "BatchId required to update batch"});
+    return;
+  }
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
@@ -106,14 +112,14 @@ export const updateBatch = async (req: Request, res: Response) => {
   }
 
   try {
-    const batch = await updateBatchById(req.params.id, { name, rootSpanIds });
-    res.json(batch);
+    const updatedBatch = await updateBatchById(batchId, { name, rootSpanIds });
+    res.status(200).json(updatedBatch);
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
       return;
     }
-    console.error(`Error updating batch ${req.params.id}:`, err);
+    console.error(`Error updating batch ${batchId}:`, err);
     res.status(500).json({ error: 'Failed to update batch' });
   }
 };
@@ -126,7 +132,7 @@ export const deleteBatch = async (req: Request, res: Response) => {
       res.status(400).json({error: "Missing batchID query parameter"})
     }
     const deletedBatch = await deleteBatchById(batchId);
-    res.json({ message: 'Batch deleted successfully', deletedBatch });
+    res.status(200).json({ message: 'Batch deleted successfully', deletedBatch });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });

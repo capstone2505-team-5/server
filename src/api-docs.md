@@ -283,8 +283,8 @@ Updates a single batch by ID
 **Request Body:**
 ```ts
 {
-  name?: string;
-  rootSpanIds?: string[];
+  name: string;
+  rootSpanIds: string[];
 }
 ```
 

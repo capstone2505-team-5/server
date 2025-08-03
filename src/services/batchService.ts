@@ -161,21 +161,29 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
  * Remove batch_id and annotations from removed spans
  */
 export const updateBatchById = async (
-  id: string,
+  batchId: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
   try {
-    const { name, rootSpanIds } = batchUpdate;
+    const { 
+      name: newName, 
+      rootSpanIds: 
+      newRootSpanIds 
+    } = batchUpdate;
 
-    // update batch name and get project_id
+    // update batch name
     const result = await pool.query(
-      `UPDATE batches SET name = $1 WHERE id = $2 RETURNING id, project_id`,
-      [name, id]
+      `
+        UPDATE batches 
+        SET name = $1 
+        WHERE id = $2 
+        RETURNING id, project_id
+      `,
+      [newName, batchId]
     );
     if (result.rowCount === 0) {
-      throw new BatchNotFoundError(id);
+      throw new BatchNotFoundError(batchId);
     }
-
     const { project_id } = result.rows[0];
 
     // detach old spans from batch (if not in updated root spans)
@@ -187,26 +195,33 @@ export const updateBatchById = async (
         AND id <> ALL($2)
         RETURNING id
       `,
-      [id, rootSpanIds]
+      [batchId, newRootSpanIds]
     );
 
-    // removing annotations from spans removed from batch
+    // remove annotations from spans removed from batch
     if ((updateSpansResult.rowCount || 0) > 0) {
-      const removedSpansIds = updateSpansResult.rows.map(s => s.id);
+      const removedSpansIds = updateSpansResult.rows
+        .map(s => s.id);
       await removeAnnotationFromSpans(removedSpansIds);
     }
   
     // attach new spans
-    if (rootSpanIds.length > 0) {
+    if (newRootSpanIds.length > 0) {
       await pool.query(
-        `UPDATE root_spans
+        `
+          UPDATE root_spans
           SET batch_id = $1
-        WHERE id = ANY($2)`,
-        [id, rootSpanIds]
+          WHERE id = ANY($2)
+          `, [batchId, newRootSpanIds]
       );
     }
 
-    return { id, name, projectId: project_id, rootSpanIds };
+    return { 
+      id: batchId, 
+      name: newName, 
+      projectId: project_id, 
+      rootSpanIds: newRootSpanIds ,
+    };
   } catch (e) {
     console.error("failed to update batch in database", e);
     throw e;

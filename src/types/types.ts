@@ -151,10 +151,7 @@ export interface NewBatch {
   rootSpanIds: string[];
 }
 
-export interface UpdateBatch {
-  name: string;
-  rootSpanIds: string[];
-}
+export type UpdateBatch = Omit<NewBatch, 'projectId'>;
 
 export interface AllRootSpansResult {
   rootSpans: AnnotatedRootSpan[];
