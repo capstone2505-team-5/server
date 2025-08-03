@@ -297,3 +297,23 @@ export const clearCategoriesFromAnnotations = async (annotationIds: string[]) =>
     throw new Error('Error clearing categories from annotations');
   }
 };
+
+export const removeAnnotationFromSpans = async (rootSpans: string[]) => {
+  try {
+    if (rootSpans.length < 1) {
+      throw new Error("No root spans provided to remove annotations")
+    }
+
+    const query = `
+      DELETE 
+      FROM annotations
+      WHERE annotations.root_span_id = ANY($1)
+    `
+    const result = await pool.query(query, [rootSpans]);
+    console.log(`Removed ${result.rowCount || 0} annotations from ${rootSpans.length} spans`);
+    return { removed: result.rowCount || 0 }; // ← Return result
+  } catch(e) {
+    console.error("Failed to remove annotations from spans");
+    throw e;
+  }
+}

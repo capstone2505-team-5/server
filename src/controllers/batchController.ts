@@ -119,15 +119,20 @@ export const updateBatch = async (req: Request, res: Response) => {
 };
 
 export const deleteBatch = async (req: Request, res: Response) => {
+  const batchId = req.params.id;
   try {
-    const deletedBatch = await deleteBatchById(req.params.id);
+    if (!batchId) {
+      console.error("batchId query parameter is required to delete batch")
+      res.status(400).json({error: "Missing batchID query parameter"})
+    }
+    const deletedBatch = await deleteBatchById(batchId);
     res.json({ message: 'Batch deleted successfully', deletedBatch });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
       return;
     }
-    console.error(`Error deleting batch ${req.params.id}:`, err);
+    console.error(`Error deleting batch ${batchId}:`, err);
     res.status(500).json({ error: 'Failed to delete batch' });
   }
 };

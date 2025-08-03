@@ -11,10 +11,14 @@ import type {
 } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
-import { getAllRootSpans, insertFormattedSpanSets } from './rootSpanService';
+import { 
+  getAllRootSpans, 
+  insertFormattedSpanSets 
+} from './rootSpanService';
 import { openai } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
+import { removeAnnotationFromSpans } from './annotationService';
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   try {
@@ -154,6 +158,7 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
 
 /**
  * Update a batch’s name and its set of assigned rootSpanIds
+ * Remove batch_id and annotations from removed spans
  */
 export const updateBatchById = async (
   id: string,
@@ -161,9 +166,8 @@ export const updateBatchById = async (
 ): Promise<BatchDetail> => {
   try {
     const { name, rootSpanIds } = batchUpdate;
-    console.log('batchUpdate', batchUpdate);
 
-    // update and get project_id
+    // update batch name and get project_id
     const result = await pool.query(
       `UPDATE batches SET name = $1 WHERE id = $2 RETURNING id, project_id`,
       [name, id]
@@ -174,15 +178,24 @@ export const updateBatchById = async (
 
     const { project_id } = result.rows[0];
 
-    // detach old spans
-    await pool.query(
-      `UPDATE root_spans
+    // detach old spans from batch (if not in updated root spans)
+    const updateSpansResult = await pool.query(
+      `
+        UPDATE root_spans
         SET batch_id = NULL
-      WHERE batch_id = $1
-        AND id <> ALL($2)`,
+        WHERE batch_id = $1
+        AND id <> ALL($2)
+        RETURNING id
+      `,
       [id, rootSpanIds]
     );
 
+    // removing annotations from spans removed from batch
+    if ((updateSpansResult.rowCount || 0) > 0) {
+      const removedSpansIds = updateSpansResult.rows.map(s => s.id);
+      await removeAnnotationFromSpans(removedSpansIds);
+    }
+  
     // attach new spans
     if (rootSpanIds.length > 0) {
       await pool.query(
@@ -225,6 +238,8 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
     }
 
     const { id: deletedId, name, project_id } = result.rows[0];
+
+    await removeAnnotationFromSpans(rootSpanIds);
 
     return {
       id: deletedId,

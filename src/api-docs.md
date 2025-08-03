@@ -303,6 +303,7 @@ Updates a single batch by ID
 ### DELETE `/api/batches/:id`
 
 Deletes a batch by ID
+- Removes annotations / categories from all spans in the batch
 
 **Response:**
 ```ts
@@ -316,10 +317,11 @@ Deletes a batch by ID
 
 ---
 
-// Format a batch
-router.post('/batches/:batchId/format', formatBatchByLLM);
-
+### POST `/api//batches/:batchId/format
+- format a batch
 - request body empty
+- response: (fill this in)
+
 ---
 
 
@@ -343,7 +345,6 @@ Returns: array of project summaries
 ---
 
 ### GET `/api/projects/:projectId`
-- Tested with Postman
 
 Returns: array of batch summaries
 
@@ -363,7 +364,7 @@ Returns: array of batch summaries
 ```
 
 ---
-NOT DONE YET
+
 ### POST `/api/categorize?batchId=abc123`
 
 Generates categories from annotations in a batch
