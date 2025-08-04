@@ -196,31 +196,3 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
     rootSpanIds,
   };
 };
-
-// export const getAllBatches = async (): Promise<BatchSummary[]> => {
-//   const batch = `
-//     SELECT
-//       b.id,
-//       b.name,
-//       COUNT(rs.id) AS "totalSpans",
-//       COUNT(a.id) FILTER (WHERE a.rating <> 'none')   AS "annotatedCount",
-//       COUNT(a.id) FILTER (WHERE a.rating = 'good')    AS "goodCount"
-//     FROM batches b
-//     LEFT JOIN root_spans rs
-//       ON rs.batch_id = b.id
-//     LEFT JOIN annotations a
-//       ON a.root_span_id = rs.id
-//     GROUP BY b.id, b.name
-//     ORDER BY b.name;
-//   `;
-
-//   const result = await pool.query(batch);
-
-//   return result.rows.map(row => ({
-//     id: row.id,
-//     name: row.name,
-//     totalSpans: parseInt(row.totalSpans, 10),
-//     annotatedCount: parseInt(row.annotatedCount, 10),
-//     goodCount: parseInt(row.goodCount, 10)
-//   }));
-// };

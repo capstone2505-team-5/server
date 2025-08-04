@@ -1,4 +1,4 @@
-Updated July 31, 2025
+Updated July 31, 2025 7:00PM
 
 # API Endpoints
 
@@ -12,6 +12,10 @@ Returns:
 - array of root spans with annotations
 - paginated and filterable with query params
 - total count is the total amount of spans that matches params
+- if batchId is not present, will only show spans not in a batch
+- pageNumber defaults to 1 if missing
+- numPerPage defaults to 20 if missing
+- if project is left out, currently shows all projects (should probably be changed to required)
 
 **Response:**
 ```ts
@@ -219,14 +223,14 @@ Returns: metadata for a batch and paginated root spans.
 
 ---
 DONE FIRST PASS
-### GET `/api/batches/:batchId/edit`
+### GET `/api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
-Returns: root spans not associated with any batch.
+Returns: root spans not associated with any batch and root spans from the batch
 
 **Response:**
 ```ts
 {
-  batchlessRootSpans: [
+  editBatchRootSpans: [
     {
       id: string;
       traceId: string;
