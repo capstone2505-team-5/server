@@ -1,6 +1,8 @@
 import { error } from "console";
 import { pool } from "../db/postgres";
-import { AnnotatedRootSpan, Rating } from "../types/types";
+import { AnnotatedRootSpan, Rating, AllRootSpansResult } from "../types/types";
+import { DEFAULT_PAGE_QUANTITY, FIRST_PAGE, MAX_SPANS_PER_PAGE } from "../constants/index";
+import type { RootSpanQueryParams, FormattedSpanSet } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
   constructor(id: string) {
@@ -8,14 +10,6 @@ export class RootSpanNotFoundError extends Error {
     this.name = 'RootSpanNotFoundError';
   }
 }
-
-type RootSpanQueryParams = {
-  batchId?: string;
-  projectId?: string;
-  spanName?: string;
-  pageNumber: number;
-  numPerPage: number;
-};
 
 type RawRootSpanRow = {
   root_span_id: string;
@@ -34,28 +28,35 @@ type RawRootSpanRow = {
   categories: string[];
 };
 
-export const getAllRootSpans = async ({
+export const fetchRootSpans = async ({
   batchId,
   projectId,
   spanName,
   pageNumber,
-  numPerPage,
-}: RootSpanQueryParams): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  numberPerPage,
+}: RootSpanQueryParams): Promise<AllRootSpansResult> => {
   try {
+    const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+
     // Validate pagination input
-    if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
-      throw new Error(`Invalid pageNumber: ${pageNumber}`);
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error(`Invalid page number: ${pageNum}`);
     }
 
-    if (numPerPage < 1 || numPerPage > 100 || !Number.isInteger(numPerPage)) {
-      throw new Error(`Invalid numPerPage: ${numPerPage}`);
+    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
+      throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
+    }
+
+    if (!projectId && !batchId) {
+      throw new Error("Either projectId or batchID is required");
     }
 
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
     // if batchId is undefined, show only batchless spans
-    if (batchId === undefined) {
+    if (!batchId) {
       whereClauses.push(`r.batch_id IS NULL`);
     } else if (batchId !== undefined) {
       params.push(batchId);
@@ -74,7 +75,7 @@ export const getAllRootSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNumber - 1) * numPerPage;
+    const offset = (pageNum - 1) * numPerPage;
     params.push(numPerPage, offset);
 
     const query = `
@@ -260,35 +261,28 @@ export const nullifyBatchId = async (spanId: string, batchId: string): Promise<b
   }
 }
 
-type FetchEditBatchSpansParams = {
-  batchId: string;
-  projectId?: string;
-  spanName?: string;
-  pageNumber: number;
-  numPerPage: number;
-};
-
 export const fetchEditBatchSpans = async ({
   batchId,
-  projectId,
   spanName,
   pageNumber,
-  numPerPage,
-}: FetchEditBatchSpansParams): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  numberPerPage,
+}: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+  
   try {
     // Validate pagination input
-    if (pageNumber < 1 || !Number.isInteger(pageNumber)) {
-      throw new Error(`Invalid pageNumber: ${pageNumber}`);
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+      throw new Error(`Invalid pageNum: ${pageNum}`);
     }
 
-    if (numPerPage < 1 || numPerPage > 100 || !Number.isInteger(numPerPage)) {
+    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
       throw new Error(`Invalid numPerPage: ${numPerPage}`);
     }
 
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
-    // if batchId is null, show only batchless spans
     if (batchId === undefined) {
       throw new Error("batchId required");
     } else {
@@ -296,7 +290,11 @@ export const fetchEditBatchSpans = async ({
       whereClauses.push(`r.batch_id = $${params.length} OR r.batch_id IS NULL`);
     }
 
-    if (projectId) {
+    const projectId = await getProjectIdFromBatch(batchId);
+
+    if (projectId === undefined) {
+      throw new Error("Error fetching projectID from batchId");
+    }else {
       params.push(projectId);
       whereClauses.push(`r.project_id = $${params.length}`);
     }
@@ -308,7 +306,7 @@ export const fetchEditBatchSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNumber - 1) * numPerPage;
+    const offset = (pageNum - 1) * numPerPage;
     params.push(numPerPage, offset);
 
     const query = `
@@ -382,3 +380,58 @@ export const fetchEditBatchSpans = async ({
     throw new Error("Failed to fetch root spans from the database");
   }
 };
+
+export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSet[]): Promise<{updated: number}> => {
+  try {
+    // Build the VALUES clause with placeholders
+    const valuesClauses: string[] = [];
+    const params: string[] = [];
+    
+    formattedSpanSets.forEach((spanSet, index) => {
+      const baseIndex = index * 3;
+      valuesClauses.push(`($${baseIndex + 1}, $${baseIndex + 2}, $${baseIndex + 3})`);
+      params.push(spanSet.spanId, spanSet.formattedInput, spanSet.formattedOutput);
+    });
+    
+    // FROM clause joins and updates in one operations
+    const query = `
+      UPDATE root_spans 
+      SET 
+        formatted_input = updates.formatted_input,
+        formatted_output = updates.formatted_output,
+        formatting_status = 'completed',
+        formatted_at = NOW()
+      FROM (VALUES ${valuesClauses.join(', ')}) 
+      AS updates(span_id, formatted_input, formatted_output)
+      WHERE root_spans.id = updates.span_id
+    `;
+    
+    console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
+    const result = await pool.query(query, params);
+    return { updated: result.rowCount || 0 };
+  } catch (e) {
+    console.error("failed to insert formatted inputs and outputs into database", e);
+    throw e;
+  }
+};
+
+const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
+  try {
+    const query = `
+      SELECT project_id 
+      FROM batches
+      WHERE batches.id = $1
+    `;
+
+    const result = await pool.query(query, [batchId]);
+
+    if (!result.rowCount || result.rowCount < 1) {
+      throw new Error(`cannot find project_id from batch ${batchId}`);
+    }
+
+    return result.rows[0].project_id;
+  } catch(e) {
+    console.error(e);
+    throw e;
+  }
+}

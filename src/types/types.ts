@@ -43,6 +43,14 @@ export interface RootSpan {
   spanName: string | null;
 }
 
+export type RootSpanQueryParams = {
+  batchId: string | undefined;
+  projectId: string | undefined;
+  spanName: string | undefined;
+  pageNumber: string | undefined;
+  numberPerPage: string | undefined;
+};
+
 export interface AnnotatedRootSpan {
   id: string;
   traceId: string;
@@ -70,7 +78,7 @@ export interface ProjectSummary {
   name: string;
   createdAt: string;
   updatedAt: string;
-  rootSpanCount: number;
+  validRootSpanCount: number;
   numBatches: number;
 }
 
@@ -132,7 +140,7 @@ export interface BatchSummary {
   projectId: string;
   name: string;
   createdAt: string;
-  spanCount: number;
+  validRootSpanCount: number;
   percentAnnotated: number | null;
   percentGood: number | null;
   categories: string[];
@@ -151,7 +159,21 @@ export interface NewBatch {
   rootSpanIds: string[];
 }
 
-export interface UpdateBatch {
-  name: string;
-  rootSpanIds: string[];
+export type UpdateBatch = Omit<NewBatch, 'projectId'>;
+
+export interface AllRootSpansResult {
+  rootSpans: AnnotatedRootSpan[];
+  totalCount: number;
+}
+
+export interface SpanSet {
+  input: string;
+  output: string;
+  spanId: string;
+}
+
+export interface FormattedSpanSet {
+  formattedInput: string;
+  formattedOutput: string;
+  spanId: string;
 }
