@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import { AnnotationNotFoundError, createNewAnnotation, deleteAnnotationById, getAllAnnotations, getAnnotationById, updateAnnotationById } from '../services/annotationService';
 import { CreateAnnotationRequest, Annotation } from "../types/types";
 
-import { categorizeBadAnnotations } from '../services/annotationCategorizationService';
-import { getAllRootSpans } from "../services/rootSpanService";
+import { categorizeBatch } from '../services/annotationCategorizationService';
+import { rootSpanExists } from "../services/rootSpanService";
 
 
 export const getAnnotations = async (req: Request, res: Response) => {
@@ -30,9 +30,8 @@ export const getAnnotation = async (req: Request, res: Response) => {
 }
 
 export const createAnnotation = async (req: Request, res: Response) => {
+  const { rootSpanId, note, rating }: CreateAnnotationRequest = req.body;
   try {
-    const { rootSpanId, note, rating }: CreateAnnotationRequest = req.body;
-    
     // Validate required fields
     if (!rootSpanId || !rating) {
       res.status(400).json({ error: 'rootSpanId and rating are required' });
@@ -50,20 +49,19 @@ export const createAnnotation = async (req: Request, res: Response) => {
       return
     }
 
-    // Check if rootSpan exists
-    const rootSpans = await getAllRootSpans()
-
-    const rootSpanExists = rootSpans.find(t => t.id === rootSpanId);
-    if (!rootSpanExists) {
-      res.status(404).json({ error: 'Root Span not found' });
+    if (!await rootSpanExists(rootSpanId)) {
+      res.status(404).json({ error: "Root span not found." })
       return
     }
     
-    // should replace this with a service to get next ID probably
-    const annotation = await createNewAnnotation({rootSpanId, note, rating})
+    const annotation = await createNewAnnotation({ rootSpanId, note, rating })
         
     res.status(201).json(annotation);
   } catch (error) {
+    console.error('Error in createAnnotation:', {
+      rootSpanId,
+      error: error instanceof Error ? error.message : error
+    });
     res.status(500).json({ error: 'Failed to create annotation' });
   }
 }
@@ -118,9 +116,10 @@ export const deleteAnnotation = async (req: Request, res: Response) => {
   }
 }
 
-export const categorizeAnnotations = async (_req: Request, res: Response) => {
+export const categorizeAnnotations = async (req: Request, res: Response) => {
   try {
-    const result = await categorizeBadAnnotations();
+    const batchId = req.params.batchId;
+    const result = await categorizeBatch(batchId);
     res.status(201).json(result);
   } catch (err) {
     console.error(err);

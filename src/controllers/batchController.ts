@@ -1,18 +1,28 @@
 import { Request, Response } from 'express';
 import {
-  getAllBatches,
+  getBatchSummariesByProject,
   createNewBatch,
-  getBatchById,
+  getBatchSummaryById,
   updateBatchById,
   deleteBatchById
 } from '../services/batchService';
-import { NewBatch } from '../types/types';
+import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
+import { getAllRootSpans, nullifyBatchId } from '../services/rootSpanService';
+import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY } from '../constants/index';
 
-export const getBatches = async (_req: Request, res: Response) => {
+
+export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
-    const batches = await getAllBatches();
-    res.json(batches);
+    const projectId = req.params.id;
+
+    if (!projectId) {
+      res.status(400).json({ error: 'projectId parameter is required' });
+      return;
+    }
+
+    const batches = await getBatchSummariesByProject(projectId);
+    res.status(200).json(batches);
   } catch (err) {
     console.error('Error fetching batches:', err);
     res.status(500).json({ error: 'Failed to fetch batches' });
@@ -20,15 +30,15 @@ export const getBatches = async (_req: Request, res: Response) => {
 };
 
 export const createBatch = async (req: Request, res: Response) => {
-  const { name, rootSpanIds }:NewBatch = req.body;
+  const { name, projectId, rootSpanIds }: NewBatch = req.body;
 
-  if (!name || !Array.isArray(rootSpanIds)) {
+  if (!name || !projectId || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
     return;
   }
 
   try {
-    const batch = await createNewBatch({ name, rootSpanIds });
+    const batch = await createNewBatch({ name, projectId, rootSpanIds });
     res.status(201).json(batch);
   } catch (err) {
     console.error('Error creating new batch:', err);
@@ -38,8 +48,57 @@ export const createBatch = async (req: Request, res: Response) => {
 
 export const getBatch = async (req: Request, res: Response) => {
   try {
-    const batch = await getBatchById(req.params.id);
-    res.json(batch);
+    const batchId = req.params.id as string | undefined;
+    const projectId = req.query.projectId as string | undefined;
+    const spanName = req.query.spanName as string | undefined;
+
+    if (!batchId) {
+      console.error("BatchId is required");
+      res.status(400).json({ error: "Failed to get batch" })
+      return
+    }
+
+    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+    
+    const { rootSpans, totalCount } = await getAllRootSpans({
+      batchId,
+      projectId,
+      spanName,
+      pageNumber,
+      numPerPage,
+    });
+
+    const batchSummary = await getBatchSummaryById(batchId);
+    res.json({ rootSpans, batchSummary, totalCount });
+  } catch (err) {
+    if (err instanceof BatchNotFoundError) {
+      res.status(404).json({ error: err.message });
+      return;
+    }
+    console.error(`Error fetching batch ${req.params.id}:`, err);
+    res.status(500).json({ error: 'Failed to fetch batch' });
+  }
+};
+
+export const getBatchlessSpans = async (req: Request, res: Response) => {
+  try {
+    const batchId = undefined;
+    const projectId = req.query.projectId as string | undefined;
+    const spanName = req.query.spanName as string | undefined;
+
+    const pageNumber = parseInt(req.query.pageNumber as string) || FIRST_PAGE;
+    const numPerPage = parseInt(req.query.numPerPage as string) || DEFAULT_PAGE_QUANTITY;
+    
+    const { rootSpans, totalCount } = await getAllRootSpans({
+      batchId,
+      projectId,
+      spanName,
+      pageNumber,
+      numPerPage,
+    });
+
+    res.json({ batchlessRootSpans: rootSpans, totalCount });
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
@@ -51,7 +110,8 @@ export const getBatch = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
-  const { name, rootSpanIds }:NewBatch = req.body;
+  console.log('test');
+  const { name, rootSpanIds }:UpdateBatch = req.body;
 
   if (!name || !Array.isArray(rootSpanIds)) {
     res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
@@ -84,3 +144,27 @@ export const deleteBatch = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to delete batch' });
   }
 };
+
+export const removeSpanFromBatch = async (req: Request, res: Response) => {
+  const batchId = req.params.batchId;
+  const spanId = req.params.spanId;
+
+  if (!batchId || !spanId) {
+    res.status(400).json({ error: "spanId and batchId required" })
+    return;
+  }
+  
+  try {
+    const spanRemoved = await nullifyBatchId(spanId, batchId);
+
+    if (!spanRemoved) {
+      res.status(404).json({ error: "Span not found in batch" })
+    }
+
+    res.status(200).json({ message: `Span removed from batch ${batchId}` })
+  } catch (e) {
+    console.error("Unable to remove span from batch", e);
+    res.status(500).json({ error: "Failed to remove span from batch" });
+    return;
+  }
+}

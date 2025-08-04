@@ -1,25 +1,51 @@
 import { pool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { CategorizedAnnotation, CategorizedRootSpan, Category, Annotation } from '../types/types';
-import { getAllAnnotations } from './annotationService';
+import { getAnnotationsByBatch, clearCategoriesFromAnnotations } from './annotationService';
 import { openai } from '../lib/openaiClient';
 import { addCategories } from './categoryService';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
+import { Result } from 'pg';
 
-export const categorizeBadAnnotations = async () => {
+interface CategorizeResult {
+  [key: string]: number;
+}
+
+// categorizes all bad annotations in one batch
+export const categorizeBatch = async (batchId: string): Promise<CategorizeResult> => {
+
+  const countAndFormat = (categorizedRootSpans: CategorizedRootSpan[]): CategorizeResult => {
+    const result: CategorizeResult = {};
+
+    const categories = categorizedRootSpans.map(crs => crs.categories).flat();
+
+    categories.forEach(category => {
+      if (result[category] === undefined) {
+        result[category] = 1;
+      } else {
+        result[category] += 1;
+      }
+    });
+
+    return result;
+  }
+
   try {
-    await resetCategoryTables();    // ← dev-only wipe
+    const batchAnnotations = await getAnnotationsByBatch(batchId);
+    console.log("batch annotations:", batchAnnotations); //de
+    const badBatchAnnotations = batchAnnotations.filter(a => a.rating === 'bad');
 
-    const allAnnotations = await getAllAnnotations();
-    const badAnnotations = allAnnotations.filter(a => a.rating === 'bad');
-
-    if (badAnnotations.length === 0) {
-      return;
+    if (badBatchAnnotations.length < 1) {
+      return {};
     }
 
-    const notes = pullNotes(badAnnotations);
-    const notesWithRootSpanIds = pullNotesWithRootSpanId(badAnnotations);
+    const annotationIds = badBatchAnnotations.map(a => a.id)
+    await clearCategoriesFromAnnotations(annotationIds);
+    
+    const notes = pullNotes(badBatchAnnotations);
+    const notesWithRootSpanIds = pullNotesWithRootSpanId(badBatchAnnotations);
+
     const categories = await createCategories(notes);
     const categoriesWithIds = await addCategories(categories);
     const categorizedRootSpans = await getCategorizedRootSpans(
@@ -28,32 +54,15 @@ export const categorizeBadAnnotations = async () => {
     );
     await addCategoriesToAnnotations(
       categoriesWithIds, 
-      badAnnotations, 
+      badBatchAnnotations, 
       categorizedRootSpans
     );
-    return categorizedRootSpans;
+
+    console.log(categorizedRootSpans)
+    return countAndFormat(categorizedRootSpans);
   } catch (err) {
     console.error(err);
     throw err;
-  }
-};
-
-/**
- * Danger-zone helper: clears all category data.
- * Call only in non-prod environments.
- */
-const resetCategoryTables = async (): Promise<void> => {
-  // Wrap in a transaction for safety
-  await pool.query('BEGIN');
-  try {
-    // 1) delete join rows first to satisfy FK constraints
-    await pool.query('DELETE FROM annotation_categories');
-    // 2) now delete category definitions
-    await pool.query('DELETE FROM categories');
-    await pool.query('COMMIT');
-  } catch (e) {
-    await pool.query('ROLLBACK');
-    throw e;
   }
 };
 
@@ -175,14 +184,13 @@ const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId
   Your job is to figure out which categories are relevant for each note.
   Multiple categories might apply to one note.  
   Return ONLY a valid JSON array of objects, no markdown fences.
-  Each object will have a rootSpanId property and an array of cateogires.
+  Each object will have a rootSpanId property and an array of categories.
   Example: [
     {"rootSpanId": "SYN018", "categories": ["spelling", "speed"]},
     {"rootSpanId": "SYN019", "categories": ["spelling", "attitude"]},
     {"rootSpanId": "SYN021", "categories": ["spelling", "speed"]},
     {"rootSpanId": "SYN008", "categories": ["speed"]},
   ];
-};
   `.trim();
 
   const userContent = `Categories:\n${categories.join('\n')}\n\nNotes:\n${notesWithRootSpanId.join('\n')}`;
@@ -211,9 +219,6 @@ const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId
   try {
     const arr = JSON.parse(clean);
     if (!Array.isArray(arr)) throw new Error('Not an array');
-    if (arr.length < notesWithRootSpanId.length) {
-      throw new OpenAIError('Not enough root spans categorized');
-    }
     return arr;
   } catch (e) {
     console.error('Bad JSON from model:', clean);
