@@ -20,6 +20,7 @@ import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
 import { sendSSEUpdate, closeSSEConnection } from './sseService';
+import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   try {
@@ -359,12 +360,12 @@ const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
 
 const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
   try {
-    const CHUNK_SIZE = 30;
+    const CHUNK_SIZE = FORMAT_BATCH_CHUNK_SIZE;
     
     // Handle empty case
     if (spanSets.length === 0) return [];
     
-    // Split into chunks of 30
+    // Split into chunks of spans
     const chunks: SpanSet[][] = [];
     for (let i = 0; i < spanSets.length; i += CHUNK_SIZE) {
       chunks.push(spanSets.slice(i, i + CHUNK_SIZE));
@@ -459,7 +460,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
           { role: 'user',   content: userContent },
         ],
       }, 
-      { timeout: 30_000 }, // Increased from 15s to 30s
+      { timeout: FORMAT_BATCH_TIMEOUT_LIMIT }, // Increased from 15s to 30s
     );
     raw = completion.choices[0].message.content ?? '';
   } catch (err) {
