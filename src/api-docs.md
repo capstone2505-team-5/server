@@ -1,380 +1,543 @@
-Updated: 8-1-25
+# API Documentation
 
-# API Endpoints
+**Last Updated:** January 8, 2025
+
+## Table of Contents
+
+- [Type Definitions](#type-definitions)
+- [Root Spans](#root-spans)
+- [Annotations](#annotations)
+- [Batches](#batches)
+- [Projects](#projects)
+- [Categories](#categories)
 
 ---
-### GET `/api/rootSpans?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
 
-Returns: 
-- array of root spans with annotations
-- paginated and filterable with query params
-- total count is the total amount of spans that matches params
-- if batchId is not present, will only show spans not in a batch
-- projectId or batchId required
+## Type Definitions
+
+```typescript
+type Rating = 'good' | 'bad';
+
+```
+
+---
+
+## Root Spans
+
+### `GET /api/rootSpans`
+
+Retrieves paginated root spans with optional filtering.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes* | Filter by project ID |
+| `batchId` | string | Yes* | Filter by batch ID |
+| `spanName` | string | No | Filter by span name |
+| `pageNumber` | number | No | Page number (default: 1) |
+| `numPerPage` | number | No | Items per page (default: 20) |
+
+*Either `projectId` or `batchId` is required. If `batchId` is not provided, only shows spans not in any batch.
+
+**Example Request:**
+```
+GET /api/rootSpans?projectId=proj_abc123&spanName=generateResponse&pageNumber=1&numPerPage=10
+```
 
 **Response:**
-```ts
+```typescript
 {
   rootSpans: [
     {
-      id: string;
-      traceId: string;
-      batchId: string;
-      input: string;
-      output: string;
-      projectId: string;
-      spanName: string;
-      startTime: string;
-      endTime: string;
-      createdAt: string;
+      id: "span_xyz789",
+      traceId: "trace_def456",
+      batchId: "batch_ghi012",
+      input: "What is the weather like today?",
+      output: "The weather is sunny and 75°F.",
+      projectId: "proj_abc123",
+      spanName: "generateResponse",
+      startTime: "2025-01-08T10:30:00.000Z",
+      endTime: "2025-01-08T10:30:02.500Z",
+      createdAt: "2025-01-08T10:30:00.000Z",
       annotation: {
-        id: string;
-        note: string;
-        rating: Rating;
-        categories: string[];
-      };
+        id: "ann_jkl345",
+        note: "Good response with accurate information",
+        rating: "good",
+        categories: ["helpful", "accurate"]
+      }
     }
-  ];
-  totalCount: number;
+  ],
+  totalCount: 156
 }
-
 ```
 
----
-### GET `/api/rootSpans/:id`
+### `GET /api/rootSpans/:id`
 
-Returns: a single root span
+Retrieves a single root span by ID.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Root span ID |
+
+**Example Request:**
+```
+GET /api/rootSpans/span_xyz789
+```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  traceId: string;
-  batchId: string;
-  input: string;
-  output: string;
-  projectId: string;
-  spanName: string;
-  startTime: string;
-  endTime: string;
-  createdAt: string;
+  id: "span_xyz789",
+  traceId: "trace_def456",
+  batchId: "batch_ghi012",
+  input: "What is the weather like today?",
+  output: "The weather is sunny and 75°F.",
+  projectId: "proj_abc123",
+  spanName: "generateResponse",
+  startTime: "2025-01-08T10:30:00.000Z",
+  endTime: "2025-01-08T10:30:02.500Z",
+  createdAt: "2025-01-08T10:30:00.000Z",
   annotation: {
-    id: string;
-    note: string;
-    rating: Rating;
-    categories: string[];
-  };
+    id: "ann_jkl345",
+    note: "Good response with accurate information",
+    rating: "good",
+    categories: ["helpful", "accurate"]
+  }
 }
 ```
 
 ---
 
-### GET `/api/annotations`
+## Annotations
+
+### `GET /api/annotations`
+
+Retrieves all annotations.
 
 **Response:**
-```ts
+```typescript
 [
   {
-    id: string;
-    rootSpanId: string;
-    note: string;
-    rating: Rating;
-    categories: string[];
+    id: "ann_jkl345",
+    rootSpanId: "span_xyz789",
+    note: "Good response with accurate information",
+    rating: "good",
+    categories: ["helpful", "accurate"]
+  },
+  {
+    id: "ann_mno678",
+    rootSpanId: "span_pqr901",
+    note: "Response was confusing and unhelpful",
+    rating: "bad",
+    categories: ["confusing", "unhelpful"]
   }
 ]
 ```
 
----
+### `GET /api/annotations/:id`
 
-### GET `/api/annotations/:id`
+Retrieves a single annotation by ID.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Annotation ID |
+
+**Example Request:**
+```
+GET /api/annotations/ann_jkl345
+```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  rootSpanId: string;
-  note: string;
-  rating: Rating;
-  categories: string[];
+  id: "ann_jkl345",
+  rootSpanId: "span_xyz789",
+  note: "Good response with accurate information",
+  rating: "good",
+  categories: ["helpful", "accurate"]
 }
 ```
 
----
-### POST `/api/annotations`
-- Annotate a span
-- Cannot annotate without a rating
+### `POST /api/annotations`
 
+Creates a new annotation for a root span.
+
+> **Note:** A rating is required when creating an annotation.
 
 **Request Body:**
-```ts
+```typescript
 {
-  rootSpanId: string;
-  note: string;
-  rating: Rating;
+  rootSpanId: "span_xyz789",
+  note: "This response was very helpful and accurate",
+  rating: "good"
 }
 ```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  rootSpanId: string;
-  note: string;
-  rating: Rating;
-  categories: string[];
+  id: "ann_stu234",
+  rootSpanId: "span_xyz789",
+  note: "This response was very helpful and accurate",
+  rating: "good",
+  categories: []
 }
 ```
 
----
+### `PATCH /api/annotations/:id`
 
-### PATCH `/api/annotations/:id`
+Updates an existing annotation.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Annotation ID |
 
 **Request Body:**
-```ts
+```typescript
 {
-  note?: string;
-  rating?: Rating;
+  note?: "Updated note with more details",
+  rating?: "bad"
 }
 ```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  rootSpanId: string;
-  note: string;
-  rating: Rating;
-  categories: string[];
+  id: "ann_jkl345",
+  rootSpanId: "span_xyz789",
+  note: "Updated note with more details",
+  rating: "bad",
+  categories: ["unhelpful"]
 }
 ```
 
----
+### `DELETE /api/annotations/:id`
 
-### DELETE `/api/annotations/:id`
+Deletes an annotation by ID.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Annotation ID |
+
+**Example Request:**
+```
+DELETE /api/annotations/ann_jkl345
+```
 
 **Response:**
-```ts
+```typescript
 {
   message: "Annotation deleted successfully",
   deletedAnnotation: {
-    id: string;
-    rootSpanId: string;
-    note: string;
-    rating: Rating;
-    categories: string[];
+    id: "ann_jkl345",
+    rootSpanId: "span_xyz789",
+    note: "Updated note with more details",
+    rating: "bad",
+    categories: ["unhelpful"]
   }
 }
 ```
 
 ---
 
-### Type Definition
+## Batches
 
-```ts
-type Rating = 'good' | 'bad';
+### `GET /api/batches/:batchId`
+
+Retrieves batch metadata and paginated root spans within the batch.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID |
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | No | Project ID |
+| `pageNumber` | number | No | Page number (default: 1) |
+| `numPerPage` | number | No | Items per page (default: 20) |
+
+**Example Request:**
+```
+GET /api/batches/batch_ghi012?projectId=proj_abc123&pageNumber=1&numPerPage=10
 ```
 
----
-### GET `/api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20`
-
-Returns: metadata for a batch and paginated root spans.
-
 **Response:**
-```ts
+```typescript
 {
   batchSummary: {
-                  id: string;
-                  name: string;
-                  span_count: number;
-                  percent_annotated: number;
-                  percent_good: number;
-                  categories: string[];
-                }, 
+    id: "batch_ghi012",
+    name: "Customer Support Responses",
+    span_count: 45,
+    percent_annotated: 78.5,
+    percent_good: 82.3,
+    categories: ["helpful", "accurate", "polite"]
+  },
   rootSpans: [
-                {
-                  id: string;
-                  traceId: string;
-                  startTime: string;
-                  endTime: string;
-                  input: string;
-                  output: string;
-                  projectName: string;
-                  spanName: string;
-                  annotation: {
-                    id: string;
-                    note: string;
-                    rating: Rating;
-                    categories: string[];
-                  };
-                }
-              ],
-  totalCount: number;
+    {
+      id: "span_xyz789",
+      traceId: "trace_def456",
+      startTime: "2025-01-08T10:30:00.000Z",
+      endTime: "2025-01-08T10:30:02.500Z",
+      input: "What is the weather like today?",
+      output: "The weather is sunny and 75°F.",
+      projectName: "Weather Assistant",
+      spanName: "generateResponse",
+      annotation: {
+        id: "ann_jkl345",
+        note: "Good response with accurate information",
+        rating: "good",
+        categories: ["helpful", "accurate"]
+      }
+    }
+  ],
+  totalCount: 45
 }
-
 ```
 
----
+### `GET /api/batches/edit`
 
-### GET `/api/batches/edit?projectId=123&batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20`
+Retrieves root spans for batch editing - includes both unassigned spans and spans from the specified batch.
 
-Returns: root spans not associated with any batch and root spans from the batch
-- batchId, projectId, pageNumber, and numPerPage required
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+| `batchId` | string | Yes | Batch ID to edit |
+| `spanName` | string | No | Filter by span name |
+| `pageNumber` | number | No | Page number |
+| `numPerPage` | number | No | Items per page |
+
+**Example Request:**
+```
+GET /api/batches/edit?batchId=batch_ghi012&pageNumber=1&numPerPage=20
+```
 
 **Response:**
-```ts
+```typescript
 {
   editBatchRootSpans: [
     {
-      id: string;
-      traceId: string;
-      batchId: string;
-      input: string;
-      output: string;
-      projectId: string;
-      spanName: string;
-      startTime: string;
-      endTime: string;
-      createdAt: string;
+      id: "span_xyz789",
+      traceId: "trace_def456",
+      batchId: "batch_ghi012",
+      input: "What is the weather like today?",
+      output: "The weather is sunny and 75°F.",
+      projectId: "proj_abc123",
+      spanName: "generateResponse",
+      startTime: "2025-01-08T10:30:00.000Z",
+      endTime: "2025-01-08T10:30:02.500Z",
+      createdAt: "2025-01-08T10:30:00.000Z",
       annotation: {
-        id: string;
-        note: string;
-        rating: Rating;
-        categories: string[];
-      };
+        id: "ann_jkl345",
+        note: "Good response with accurate information",
+        rating: "good",
+        categories: ["helpful", "accurate"]
+      }
     }
-  ];
-  totalCount: number;
+  ],
+  totalCount: 67
 }
 ```
 
----
+### `POST /api/batches`
 
-### POST `/api/batches`
-
-Creates a new batch
+Creates a new batch with specified root spans.
 
 **Request Body:**
-```ts
+```typescript
 {
-  name: string;
-  projectId: string;
-  rootSpanIds: string[];
+  name: "Customer Support Analysis",
+  projectId: "proj_abc123",
+  rootSpanIds: ["span_xyz789", "span_pqr901", "span_stu234"]
 }
 ```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  projectId: string;
-  name: string;
-  rootSpanIds: string[];
+  id: "batch_vwx567",
+  projectId: "proj_abc123",
+  name: "Customer Support Analysis",
+  rootSpanIds: ["span_xyz789", "span_pqr901", "span_stu234"]
 }
 ```
 
----
+### `PATCH /api/batches/:batchId`
 
-### PATCH `/api/batches/:batchId`
+Updates an existing batch's name and root spans.
 
-Updates a single batch by ID
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID |
 
 **Request Body:**
-```ts
+```typescript
 {
-  name: string;
-  rootSpanIds: string[];
+  name: "Updated Customer Support Analysis",
+  rootSpanIds: ["span_xyz789", "span_pqr901", "span_new123"]
 }
 ```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  projectId: string;
-  name: string;
-  rootSpanIds: string[];
+  id: "batch_vwx567",
+  projectId: "proj_abc123",
+  name: "Updated Customer Support Analysis",
+  rootSpanIds: ["span_xyz789", "span_pqr901", "span_new123"]
 }
 ```
 
----
+### `DELETE /api/batches/:id`
 
-### DELETE `/api/batches/:id`
+Deletes a batch and removes all annotations and categories from spans in the batch.
 
-Deletes a batch by ID
-- Removes annotations / categories from all spans in the batch
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | Yes | Batch ID |
+
+**Example Request:**
+```
+DELETE /api/batches/batch_vwx567
+```
 
 **Response:**
-```ts
+```typescript
 {
-  id: string;
-  projectId: string;
-  name: string;
-  rootSpanIds: string[];
+  id: "batch_vwx567",
+  projectId: "proj_abc123",
+  name: "Updated Customer Support Analysis",
+  rootSpanIds: ["span_xyz789", "span_pqr901", "span_new123"]
 }
 ```
 
----
+### `POST /api/batches/:batchId/format`
 
-### POST `/api//batches/:batchId/format
-- format a batch
-- request body empty
-- response: (fill this in)
+Formats and processes a batch for analysis.
 
----
-
-
-### GET `/api/projects/`
-
-Returns: array of project summaries
-
-**Response:**
-```ts
-[
-  {
-    id: string;
-    name: string;
-    updatedAt: date;
-    validRootSpanCount: number;
-    numBatches: number;
-  }
-]
-```
-
----
-
-### GET `/api/projects/:projectId`
-
-Returns: array of batch summaries
-
-**Response:**
-```ts
-[
-  {
-    id: string;
-    name: string;
-    createdAt: string;
-    validRootSpanCount: number;
-    percentAnnotated: number;
-    percentGood: number;
-    categories: string[];
-  }
-]
-```
-
----
-
-### POST `/api/categorize?batchId=abc123`
-
-Generates categories from annotations in a batch
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID |
 
 **Request Body:** `null`
 
-// The keys will be the category names and the number will be the quantity
+**Example Request:**
+```
+POST /api/batches/batch_ghi012/format
+```
+
 **Response:**
-```ts
+```typescript
 {
-  [key: string]: number;
+  message: "Batch formatted successfully",
+  batchId: "batch_ghi012",
+  processedSpanCount: 45,
+  timestamp: "2025-01-08T10:30:00.000Z"
 }
 ```
 
 ---
+
+## Projects
+
+### `GET /api/projects`
+
+Retrieves all project summaries.
+
+**Response:**
+```typescript
+[
+  {
+    id: "proj_abc123",
+    name: "Weather Assistant",
+    updatedAt: "2025-01-08T10:30:00.000Z",
+    validRootSpanCount: 1247,
+    numBatches: 12
+  },
+  {
+    id: "proj_def456",
+    name: "Customer Support Bot",
+    updatedAt: "2025-01-07T15:45:00.000Z",
+    validRootSpanCount: 892,
+    numBatches: 8
+  }
+]
+```
+
+### `GET /api/projects/:projectId`
+
+Retrieves batch summaries for a specific project.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | Project ID |
+
+**Example Request:**
+```
+GET /api/projects/proj_abc123
+```
+
+**Response:**
+```typescript
+[
+  {
+    id: "batch_ghi012",
+    name: "Customer Support Responses",
+    createdAt: "2025-01-05T09:15:00.000Z",
+    validRootSpanCount: 45,
+    percentAnnotated: 78.5,
+    percentGood: 82.3,
+    categories: ["helpful", "accurate", "polite"]
+  },
+  {
+    id: "batch_jkl345",
+    name: "Weather Queries",
+    createdAt: "2025-01-03T14:20:00.000Z",
+    validRootSpanCount: 67,
+    percentAnnotated: 65.2,
+    percentGood: 91.7,
+    categories: ["accurate", "informative"]
+  }
+]
+```
+
+---
+
+## Categories
+
+### `POST /api/categorize`
+
+Generates categories from annotations within a batch using AI analysis.
+
+**Query Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID to analyze |
+
+**Request Body:** `null`
+
+**Example Request:**
+```
+POST /api/categorize?batchId=batch_ghi012
+```
+
+**Response:**
+```typescript
+{
+  "helpful": 23,
+  "accurate": 19,
+  "polite": 15,
+  "confusing": 3,
+  "incomplete": 2
+}
+```
+
+The response contains category names as keys and their occurrence counts as values.
