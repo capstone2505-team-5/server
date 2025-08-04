@@ -1,6 +1,6 @@
 # API Documentation
 
-**Last Updated:** January 8, 2025
+**Last Updated:** August 3rd, 2025
 
 ## Table of Contents
 
@@ -258,7 +258,6 @@ Retrieves batch metadata and paginated root spans within the batch.
 **Query Parameters:**
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `projectId` | string | No | Project ID |
 | `pageNumber` | number | No | Page number (default: 1) |
 | `numPerPage` | number | No | Items per page (default: 20) |
 
@@ -284,8 +283,10 @@ GET /api/batches/batch_ghi012?projectId=proj_abc123&pageNumber=1&numPerPage=10
       traceId: "trace_def456",
       startTime: "2025-01-08T10:30:00.000Z",
       endTime: "2025-01-08T10:30:02.500Z",
-      input: "What is the weather like today?",
-      output: "The weather is sunny and 75°F.",
+      input: "{What is the weather like today?}",
+      output: "{{The weather is sunny and 75°F.}}",
+      formattedInput: "What is the weather like today?",
+      formattedOutput: "The weather is sunny and 75°F.",
       projectName: "Weather Assistant",
       spanName: "generateResponse",
       annotation: {

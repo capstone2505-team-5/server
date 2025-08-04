@@ -12,7 +12,8 @@ import { getProjects } from "../controllers/projectController";
 import { 
     removeSpanFromBatch, 
     getBatchesByProject, 
-    createBatch, getBatch, 
+    createBatch, 
+    getBatch, 
     updateBatch, 
     deleteBatch,
     formatBatchByLLM, 
@@ -65,7 +66,7 @@ router.get('/projects/:id', getBatchesByProject);
 // Params-> /api/batches/edit?batchId=123&spanName=myFunction&pageNumber=1&numPerPage=20
 router.get('/batches/edit', getEditBatchSpans);
 
-// Params-> /api/batches/:batchId?projectId=1234&pageNumber=1&numPerPage=20
+// Params-> /api/batches/:batchId?pageNumber=1&numPerPage=20
 // Get batch summary and root spans in batch
 router.get('/batches/:id', getBatch);
 

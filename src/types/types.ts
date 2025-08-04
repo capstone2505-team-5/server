@@ -65,6 +65,11 @@ export interface AnnotatedRootSpan {
   annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 
+export type FormattedRootSpan = AnnotatedRootSpan & {
+  formattedInput: string | undefined;
+  formattedOutput: string | undefined;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -163,6 +168,11 @@ export type UpdateBatch = Omit<NewBatch, 'projectId'>;
 
 export interface AllRootSpansResult {
   rootSpans: AnnotatedRootSpan[];
+  totalCount: number;
+}
+
+export interface FormattedRootSpansResult {
+  rootSpans: FormattedRootSpan[];
   totalCount: number;
 }
 
