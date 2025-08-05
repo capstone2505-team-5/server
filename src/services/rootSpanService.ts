@@ -98,18 +98,19 @@ export const fetchRootSpans = async ({
       
       switch (dateFilter) {
         case '12h':
-          dateCondition = `r.created_at >= NOW() - INTERVAL '12 hours'`;
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
           break;
         case '24h':
-          dateCondition = `r.created_at >= NOW() - INTERVAL '24 hours'`;
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
           break;
         case '1w':
-          dateCondition = `r.created_at >= NOW() - INTERVAL '1 week'`;
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
           break;
         case 'custom':
           if (startDate && endDate) {
             params.push(startDate, endDate);
-            dateCondition = `r.created_at >= $${params.length - 1} AND r.created_at <= $${params.length}`;
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
           }
           break;
       }
@@ -452,7 +453,6 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
       WHERE root_spans.id = updates.span_id
     `;
     
-    console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
     const result = await pool.query(query, params);
     return { updated: result.rowCount || 0 };
   } catch (e) {

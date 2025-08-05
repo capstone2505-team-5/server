@@ -62,18 +62,23 @@ const fetchRootSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ batc
             let dateCondition = '';
             switch (dateFilter) {
                 case '12h':
-                    dateCondition = `r.created_at >= NOW() - INTERVAL '12 hours'`;
+                    dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
                     break;
                 case '24h':
-                    dateCondition = `r.created_at >= NOW() - INTERVAL '24 hours'`;
+                    dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
                     break;
                 case '1w':
-                    dateCondition = `r.created_at >= NOW() - INTERVAL '1 week'`;
+                    dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
                     break;
                 case 'custom':
                     if (startDate && endDate) {
+                        console.log('Custom date filtering:', { startDate, endDate });
+                        console.log('Start date parsed:', new Date(startDate));
+                        console.log('End date parsed:', new Date(endDate));
                         params.push(startDate, endDate);
-                        dateCondition = `r.created_at >= $${params.length - 1} AND r.created_at <= $${params.length}`;
+                        // Use DATE() to compare just the date part, and make end date inclusive of full day
+                        dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+                        console.log('Date condition:', dateCondition);
                     }
                     break;
             }
@@ -84,6 +89,21 @@ const fetchRootSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ batc
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
         const offset = (pageNum - 1) * numPerPage;
         params.push(numPerPage, offset);
+        console.log('Final WHERE clause:', whereSQL);
+        console.log('Parameters:', params);
+        // Debug: Show date range in database for this project
+        if (projectId) {
+            const debugQuery = `
+        SELECT 
+          MIN(DATE(start_time)) as min_date,
+          MAX(DATE(start_time)) as max_date,
+          COUNT(*) as total_spans
+        FROM root_spans 
+        WHERE project_id = $1 AND batch_id IS NULL
+      `;
+            const debugResult = yield postgres_1.pool.query(debugQuery, [projectId]);
+            console.log('Database date range for project (by start_time):', debugResult.rows[0]);
+        }
         const query = `
       SELECT 
         r.id AS root_span_id,
@@ -557,7 +577,7 @@ const fetchRandomSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ pr
         const query = `
       WITH recent_spans AS (
         SELECT 
-          r.id AS root_span_id,
+          r.id,
           r.trace_id,
           r.batch_id,
           r.input,
@@ -573,29 +593,17 @@ const fetchRandomSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ pr
         LIMIT 200
       )
       SELECT 
-        rs.root_span_id,
-        rs.trace_id,
-        rs.batch_id,
-        rs.input,
-        rs.output,
-        rs.project_id,
-        rs.span_name,
-        rs.start_time,
-        rs.end_time,
-        rs.created_at,
-        a.id AS annotation_id,
-        a.note,
-        a.rating,
-        COALESCE(array_agg(c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
-      FROM recent_spans rs
-      LEFT JOIN annotations a ON rs.root_span_id = a.root_span_id
-      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
-      LEFT JOIN categories c ON ac.category_id = c.id
-      GROUP BY 
-        rs.root_span_id, rs.trace_id, rs.batch_id, rs.input, rs.output, 
-        rs.project_id, rs.span_name, rs.start_time, 
-        rs.end_time, rs.created_at,
-        a.id, a.note, a.rating
+        id,
+        trace_id,
+        batch_id,
+        input,
+        output,
+        project_id,
+        span_name,
+        start_time,
+        end_time,
+        created_at
+      FROM recent_spans
       ORDER BY RANDOM()
       LIMIT 50;
     `;
@@ -607,29 +615,19 @@ const fetchRandomSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ pr
             postgres_1.pool.query(query, params),
             postgres_1.pool.query(countQuery, params),
         ]);
-        const rootSpans = dataResult.rows.map(row => {
-            var _a, _b, _c;
-            return ({
-                id: row.root_span_id,
-                traceId: row.trace_id,
-                batchId: row.batch_id,
-                input: row.input,
-                output: row.output,
-                projectId: row.project_id,
-                spanName: row.span_name,
-                startTime: row.start_time,
-                endTime: row.end_time,
-                createdAt: row.created_at,
-                annotation: row.annotation_id
-                    ? {
-                        id: row.annotation_id,
-                        note: (_a = row.note) !== null && _a !== void 0 ? _a : "",
-                        rating: (_b = row.rating) !== null && _b !== void 0 ? _b : "bad",
-                        categories: (_c = row.categories) !== null && _c !== void 0 ? _c : [],
-                    }
-                    : null,
-            });
-        });
+        const rootSpans = dataResult.rows.map(row => ({
+            id: row.id,
+            traceId: row.trace_id,
+            batchId: row.batch_id,
+            input: row.input,
+            output: row.output,
+            projectId: row.project_id,
+            spanName: row.span_name,
+            startTime: row.start_time,
+            endTime: row.end_time,
+            createdAt: row.created_at,
+            annotation: null, // Random spans don't have annotations
+        }));
         return {
             rootSpans,
             totalCount: Math.min(50, parseInt(countResult.rows[0].count, 10)), // Cap at 50 for random
