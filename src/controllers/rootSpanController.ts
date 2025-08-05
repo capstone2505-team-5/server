@@ -64,6 +64,10 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
     const spanName = req.query.spanName as string | undefined;
     const pageNumber = req.query.pageNumber as string | undefined;
     const numberPerPage = req.query.numPerPage as string | undefined;
+    const searchText = req.query.searchText as string | undefined;
+    const dateFilter = req.query.dateFilter as string | undefined;
+    const startDate = req.query.startDate as string | undefined;
+    const endDate = req.query.endDate as string | undefined;
     
     if (batchId === undefined) {
       res.status(400).json( {error: "batchId is required"} );
@@ -75,6 +79,10 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
       spanName,
       pageNumber,
       numberPerPage,
+      searchText,
+      dateFilter,
+      startDate,
+      endDate,
     });
 
     res.json({ editBatchRootSpans: rootSpans, totalCount });

@@ -71,7 +71,7 @@ export const fetchRootSpans = async ({
     // Add text search filtering
     if (searchText && searchText.trim()) {
       params.push(`%${searchText.trim()}%`);
-      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length})`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
     }
 
     // Add date filtering
@@ -295,6 +295,10 @@ export const fetchEditBatchSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
+  searchText,
+  dateFilter,
+  startDate,
+  endDate,
 }: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
@@ -331,6 +335,40 @@ export const fetchEditBatchSpans = async ({
     if (spanName) {
       params.push(spanName);
       whereClauses.push(`r.span_name = $${params.length}`);
+    }
+
+    // Add text search filtering
+    if (searchText && searchText.trim()) {
+      params.push(`%${searchText.trim()}%`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
+    }
+
+    // Add date filtering
+    if (dateFilter && dateFilter !== 'all') {
+      let dateCondition = '';
+      
+      switch (dateFilter) {
+        case '12h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          break;
+        case '24h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          break;
+        case '1w':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            params.push(startDate, endDate);
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+          }
+          break;
+      }
+      
+      if (dateCondition) {
+        whereClauses.push(dateCondition);
+      }
     }
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
