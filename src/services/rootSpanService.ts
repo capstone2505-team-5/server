@@ -9,6 +9,7 @@ import type {
   Rating, 
   AllRootSpansResult ,
   FormattedRootSpansResult,
+  RawRootSpanRow
 } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
@@ -18,25 +19,6 @@ export class RootSpanNotFoundError extends Error {
   }
 }
 
-type RawRootSpanRow = {
-  root_span_id: string;
-  trace_id: string;
-  batch_id: string | null;
-  input: string;
-  output: string;
-  project_id: string;
-  span_name: string;
-  start_time: string;
-  end_time: string;
-  created_at: string;
-  formatted_input?: string;
-  formatted_output?: string;
-  annotation_id: string | null;
-  note: string | null;
-  rating: Rating | null;
-  categories: string[];
-};
-
 export const fetchRootSpans = async ({
   batchId,
   projectId,
@@ -44,23 +26,23 @@ export const fetchRootSpans = async ({
   pageNumber,
   numberPerPage,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
+  const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+
+  // Validate pagination input
+  if (pageNum < 1 || !Number.isInteger(pageNum)) {
+    throw new Error(`Invalid page number: ${pageNum}`);
+  }
+
+  if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
+    throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
+  }
+
+  if (!projectId && !batchId) {
+    throw new Error("Either projectId or batchID is required");
+  }
+
   try {
-    const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
-    const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
-
-    // Validate pagination input
-    if (pageNum < 1 || !Number.isInteger(pageNum)) {
-      throw new Error(`Invalid page number: ${pageNum}`);
-    }
-
-    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
-      throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
-    }
-
-    if (!projectId && !batchId) {
-      throw new Error("Either projectId or batchID is required");
-    }
-
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
