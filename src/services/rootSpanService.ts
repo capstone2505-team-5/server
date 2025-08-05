@@ -113,7 +113,7 @@ export const fetchRootSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -344,7 +344,7 @@ export const fetchEditBatchSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -518,7 +518,7 @@ export const fetchFormattedRootSpans = async ({
         r.end_time, r.created_at,
         r.formatted_input, r.formatted_output,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
