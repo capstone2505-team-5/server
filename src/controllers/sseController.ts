@@ -13,14 +13,9 @@ export const connectToBatchEvents = (req: Request, res: Response) => {
     // Add the SSE connection
     addSSEConnection(batchId, res);
 
-    // Handle client disconnect
+    // Handle client disconnect - this covers both normal and error disconnects
     req.on('close', () => {
       console.log(`Client disconnected from batch ${batchId} SSE`);
-      removeSSEConnection(batchId);
-    });
-
-    req.on('error', (error) => {
-      console.error(`SSE error for batch ${batchId}:`, error);
       removeSSEConnection(batchId);
     });
 

@@ -9,6 +9,10 @@ import type {
   Rating, 
   AllRootSpansResult ,
   FormattedRootSpansResult,
+<<<<<<< HEAD
+=======
+  RawRootSpanRow
+>>>>>>> add-tests
 } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
@@ -18,6 +22,7 @@ export class RootSpanNotFoundError extends Error {
   }
 }
 
+<<<<<<< HEAD
 type RawRootSpanRow = {
   root_span_id: string;
   trace_id: string;
@@ -37,6 +42,8 @@ type RawRootSpanRow = {
   categories: string[];
 };
 
+=======
+>>>>>>> add-tests
 export const fetchRootSpans = async ({
   batchId,
   projectId,
@@ -48,23 +55,23 @@ export const fetchRootSpans = async ({
   startDate,
   endDate,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
+  const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
+  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+
+  // Validate pagination input
+  if (pageNum < 1 || !Number.isInteger(pageNum)) {
+    throw new Error(`Invalid page number: ${pageNum}`);
+  }
+
+  if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
+    throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
+  }
+
+  if (!projectId && !batchId) {
+    throw new Error("Either projectId or batchID is required");
+  }
+
   try {
-    const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
-    const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
-
-    // Validate pagination input
-    if (pageNum < 1 || !Number.isInteger(pageNum)) {
-      throw new Error(`Invalid page number: ${pageNum}`);
-    }
-
-    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
-      throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
-    }
-
-    if (!projectId && !batchId) {
-      throw new Error("Either projectId or batchID is required");
-    }
-
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
 
@@ -555,7 +562,11 @@ export const fetchFormattedRootSpans = async ({
         r.end_time, r.created_at,
         r.formatted_input, r.formatted_output,
         a.id, a.note, a.rating
+<<<<<<< HEAD
       ORDER BY r.created_at DESC, r.id ASC
+=======
+      ORDER BY r.created_at DESC
+>>>>>>> add-tests
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -601,6 +612,7 @@ export const fetchFormattedRootSpans = async ({
     console.error("Error in getAllRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
   }
+<<<<<<< HEAD
 };
 
 export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]> => {
@@ -716,4 +728,6 @@ export const fetchRandomSpans = async ({
     console.error("Error fetching random spans:", error);
     throw new Error("Failed to fetch random spans from the database");
   }
+=======
+>>>>>>> add-tests
 };
