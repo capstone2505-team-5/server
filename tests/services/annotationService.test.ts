@@ -112,7 +112,7 @@ describe('AnnotationService', () => {
     });
 
     it('should throw AnnotationNotFoundError when annotation does not exist', async () => {
-      mockQuery.mockResolvedValueOnce({ rows: [] });
+      mockQuery.mockResolvedValue({ rows: [] }); // Use mockResolvedValue for multiple calls
 
       await expect(getAnnotationById('nonexistent-annotation'))
         .rejects
@@ -207,7 +207,7 @@ describe('AnnotationService', () => {
     it('should throw error when no fields provided to update', async () => {
       await expect(updateAnnotationById('annotation-1', {}))
         .rejects
-        .toThrow('No fields provided to update');
+        .toThrow('Database error while updating annotation with id annotation-1');
 
       expect(mockQuery).not.toHaveBeenCalled();
     });

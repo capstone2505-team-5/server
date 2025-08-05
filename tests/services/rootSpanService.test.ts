@@ -3,7 +3,6 @@ import {
   fetchRootSpans, 
   getRootSpanById,
   rootSpanExists,
-  nullifyBatchId,
   RootSpanNotFoundError 
 } from '../../src/services/rootSpanService';
 import { RawRootSpanRow, RootSpanQueryParams } from '../../src/types/types'; // Import the type
