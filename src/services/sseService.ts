@@ -42,9 +42,20 @@ export const sendSSEUpdate = (batchId: string, data: any) => {
 export const closeSSEConnection = (batchId: string) => {
   const connection = sseConnections.get(batchId);
   if (connection) {
-    connection.end();
-    sseConnections.delete(batchId);
-    console.log(`SSE connection closed for batch ${batchId}`);
+    try {
+      // Check if connection is still writable before closing
+      if (!connection.destroyed && connection.writable) {
+        connection.end();
+        console.log(`SSE connection closed for batch ${batchId}`);
+      } else {
+        console.log(`SSE connection already closed by client for batch ${batchId}`);
+      }
+    } catch (error) {
+      // This is expected when client disconnects first - don't log as error
+      console.log(`SSE connection cleanup for batch ${batchId} (client already disconnected)`);
+    } finally {
+      sseConnections.delete(batchId);
+    }
   }
 };
 
