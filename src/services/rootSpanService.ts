@@ -9,10 +9,7 @@ import type {
   Rating, 
   AllRootSpansResult ,
   FormattedRootSpansResult,
-<<<<<<< HEAD
-=======
   RawRootSpanRow
->>>>>>> add-tests
 } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
@@ -22,28 +19,6 @@ export class RootSpanNotFoundError extends Error {
   }
 }
 
-<<<<<<< HEAD
-type RawRootSpanRow = {
-  root_span_id: string;
-  trace_id: string;
-  batch_id: string | null;
-  input: string;
-  output: string;
-  project_id: string;
-  span_name: string;
-  start_time: string;
-  end_time: string;
-  created_at: string;
-  formatted_input?: string;
-  formatted_output?: string;
-  annotation_id: string | null;
-  note: string | null;
-  rating: Rating | null;
-  categories: string[];
-};
-
-=======
->>>>>>> add-tests
 export const fetchRootSpans = async ({
   batchId,
   projectId,
@@ -562,11 +537,7 @@ export const fetchFormattedRootSpans = async ({
         r.end_time, r.created_at,
         r.formatted_input, r.formatted_output,
         a.id, a.note, a.rating
-<<<<<<< HEAD
       ORDER BY r.created_at DESC, r.id ASC
-=======
-      ORDER BY r.created_at DESC
->>>>>>> add-tests
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -612,7 +583,6 @@ export const fetchFormattedRootSpans = async ({
     console.error("Error in getAllRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
   }
-<<<<<<< HEAD
 };
 
 export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]> => {
@@ -633,8 +603,6 @@ export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]>
     throw new Error("Failed to fetch unique span names from the database");
   }
 };
-
-
 
 export const fetchRandomSpans = async ({
   projectId,
@@ -728,6 +696,4 @@ export const fetchRandomSpans = async ({
     console.error("Error fetching random spans:", error);
     throw new Error("Failed to fetch random spans from the database");
   }
-=======
->>>>>>> add-tests
 };

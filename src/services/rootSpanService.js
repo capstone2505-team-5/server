@@ -21,19 +21,19 @@ class RootSpanNotFoundError extends Error {
 }
 exports.RootSpanNotFoundError = RootSpanNotFoundError;
 const fetchRootSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ batchId, projectId, spanName, pageNumber, numberPerPage, searchText, dateFilter, startDate, endDate, }) {
+    const pageNum = parseInt(pageNumber) || index_1.FIRST_PAGE;
+    const numPerPage = parseInt(numberPerPage) || index_1.DEFAULT_PAGE_QUANTITY;
+    // Validate pagination input
+    if (pageNum < 1 || !Number.isInteger(pageNum)) {
+        throw new Error(`Invalid page number: ${pageNum}`);
+    }
+    if (numPerPage < 1 || numPerPage > index_1.MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
+        throw new Error(`Page number must be a number between ${index_1.FIRST_PAGE} and ${index_1.MAX_SPANS_PER_PAGE}`);
+    }
+    if (!projectId && !batchId) {
+        throw new Error("Either projectId or batchID is required");
+    }
     try {
-        const pageNum = parseInt(pageNumber) || index_1.FIRST_PAGE;
-        const numPerPage = parseInt(numberPerPage) || index_1.DEFAULT_PAGE_QUANTITY;
-        // Validate pagination input
-        if (pageNum < 1 || !Number.isInteger(pageNum)) {
-            throw new Error(`Invalid page number: ${pageNum}`);
-        }
-        if (numPerPage < 1 || numPerPage > index_1.MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
-            throw new Error(`Page number must be a number between ${index_1.FIRST_PAGE} and ${index_1.MAX_SPANS_PER_PAGE}`);
-        }
-        if (!projectId && !batchId) {
-            throw new Error("Either projectId or batchID is required");
-        }
         const whereClauses = [];
         const params = [];
         // if batchId is undefined, show only batchless spans
@@ -72,13 +72,9 @@ const fetchRootSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ batc
                     break;
                 case 'custom':
                     if (startDate && endDate) {
-                        console.log('Custom date filtering:', { startDate, endDate });
-                        console.log('Start date parsed:', new Date(startDate));
-                        console.log('End date parsed:', new Date(endDate));
                         params.push(startDate, endDate);
                         // Use DATE() to compare just the date part, and make end date inclusive of full day
                         dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
-                        console.log('Date condition:', dateCondition);
                     }
                     break;
             }
@@ -89,21 +85,6 @@ const fetchRootSpans = (_a) => __awaiter(void 0, [_a], void 0, function* ({ batc
         const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
         const offset = (pageNum - 1) * numPerPage;
         params.push(numPerPage, offset);
-        console.log('Final WHERE clause:', whereSQL);
-        console.log('Parameters:', params);
-        // Debug: Show date range in database for this project
-        if (projectId) {
-            const debugQuery = `
-        SELECT 
-          MIN(DATE(start_time)) as min_date,
-          MAX(DATE(start_time)) as max_date,
-          COUNT(*) as total_spans
-        FROM root_spans 
-        WHERE project_id = $1 AND batch_id IS NULL
-      `;
-            const debugResult = yield postgres_1.pool.query(debugQuery, [projectId]);
-            console.log('Database date range for project (by start_time):', debugResult.rows[0]);
-        }
         const query = `
       SELECT 
         r.id AS root_span_id,
@@ -409,7 +390,6 @@ const insertFormattedSpanSets = (formattedSpanSets) => __awaiter(void 0, void 0,
       AS updates(span_id, formatted_input, formatted_output)
       WHERE root_spans.id = updates.span_id
     `;
-        console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
         const result = yield postgres_1.pool.query(query, params);
         return { updated: result.rowCount || 0 };
     }

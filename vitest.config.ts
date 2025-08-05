@@ -5,10 +5,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-<<<<<<< HEAD
     setupFiles: ['./tests/setup/testDb.ts'],
-=======
->>>>>>> add-tests
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
     testTimeout: 10000,

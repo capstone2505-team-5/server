@@ -360,11 +360,7 @@ const extractSpanSets = (rootSpanResults: AllRootSpansResult): SpanSet[] => {
 
 const formatAllSpanSets = async (spanSets: SpanSet[]): Promise<FormattedSpanSet[]> => {
   try {
-<<<<<<< HEAD
-    const CHUNK_SIZE = 5;
-=======
     const CHUNK_SIZE = FORMAT_BATCH_CHUNK_SIZE;
->>>>>>> add-tests
     
     // Handle empty case
     if (spanSets.length === 0) return [];

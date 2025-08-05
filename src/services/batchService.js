@@ -20,6 +20,7 @@ const errors_2 = require("../errors/errors");
 const jsonCleanup_1 = require("../utils/jsonCleanup");
 const annotationService_1 = require("./annotationService");
 const sseService_1 = require("./sseService");
+const index_2 = require("../constants/index");
 const getBatchSummariesByProject = (projectId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const query = `
@@ -287,11 +288,11 @@ const extractSpanSets = (rootSpanResults) => {
 };
 const formatAllSpanSets = (spanSets) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const CHUNK_SIZE = 5;
+        const CHUNK_SIZE = index_2.FORMAT_BATCH_CHUNK_SIZE;
         // Handle empty case
         if (spanSets.length === 0)
             return [];
-        // Split into chunks of 30
+        // Split into chunks of spans
         const chunks = [];
         for (let i = 0; i < spanSets.length; i += CHUNK_SIZE) {
             chunks.push(spanSets.slice(i, i + CHUNK_SIZE));
@@ -341,13 +342,41 @@ const formatSpanSetsChunk = (spanSets) => __awaiter(void 0, void 0, void 0, func
   ]
   
   FORMATTING GUIDELINES:
-  - **JSON/Code**: Remove the code and technical syntax and make it into a human readable format
-  - **Emails**: Format with proper headers (From:, To:, Subject:, etc.)
-  - **Recipes**: Use headers, ingredient lists, numbered steps
-  - **Lists**: Use proper Markdown lists (- or 1.)
-  - **Structured data**: Use tables or organized sections
-  - **Plain text**: Clean up spacing, add line breaks for readability
-  - **Mixed content**: Break into logical sections with headers
+
+  **FOR INPUTS (Narrow Display - Compact Structured Format):**
+  - Parse JSON completely and format as structured markdown (same as outputs)
+  - NO trailing spaces at end of lines (critical!)
+  - NO empty lines between sections (critical!)
+  - Use compact markdown formatting optimized for narrow width
+  - **For winery/business data**: Use smaller headers (###) and compact layout
+  - **Example for narrow input**:
+    ### Rotta Winery
+    **Address:** 250 Winery Rd, Templeton, CA 93465 | **Rating:** 9/10  
+    **Description:** Known for crisp sauvignon blanc, classic gsm blends  
+    **Similarity:** 0.37
+    
+    ### La Crema Tasting Room
+    **Address:** 1237 Park Street Paso Robles CA 93446 | **Rating:** 18/10  
+    **Description:** Known for innovative red field blends, crisp sauvignon blanc  
+    **Similarity:** 0.37
+
+  **FOR OUTPUTS (Wide Display - Structured Format):**
+  - **JSON Arrays of Objects**: Parse and format as organized lists or tables
+  - **Winery/Location Data**: Format each entry as a clear section with headers
+  - **Business Listings**: Use consistent structure: Name, Address, Details, Ratings
+  - **Structured Data**: Use markdown headers, lists, and clear organization
+  - **Example for winery data**:
+    ## Rotta Winery
+    **Address:** 250 Winery Rd, Templeton, CA 93465  
+    **Rating:** 9/10  
+    **Description:** Known for crisp sauvignon blanc, classic gsm blends (grenache‑syrah‑mourvèdre), and velvety malbec  
+    **Similarity:** 0.37
+    
+    ## La Crema Tasting Room  
+    **Address:** 1237 Park Street Paso Robles CA 93446  
+    **Rating:** 18/10  
+    **Description:** Known for innovative red field blends, crisp sauvignon blanc, vibrant marsanne, and rich petit verdot  
+    **Similarity:** 0.37
   
   REQUIRED OUTPUT FORMAT:
   [
@@ -359,14 +388,13 @@ const formatSpanSetsChunk = (spanSets) => __awaiter(void 0, void 0, void 0, func
   ]
   
   IMPORTANT:
-  - All formattedInputs should for formatted identically
-  - All formattedOutputs should be formatted identically
   - Return ONLY the JSON array, no other text
   - Preserve all original spanId values exactly as provided
   - Make formatting decisions based on content, not assumptions
-  - If content appears to be JSON, parse it, but remove all code and technical syntax other than markdown
-  - If content is already well-formatted, improve it but don't over-complicate
-  - Use appropriate Markdown elements: headers (#), lists, code blocks (\`\`\`), tables, etc.`;
+  - If content appears to be JSON, parse it completely and format as structured markdown
+  - For inputs: Parse JSON and format as compact structured markdown, NO trailing whitespace, NO empty lines
+  - For outputs: Parse JSON arrays into well-organized markdown with headers and sections
+  - For winery/business data: Always include Name, Address, Rating, Description, and Similarity score`;
     const userContent = JSON.stringify(spanSets, null, 2);
     let raw;
     try {
@@ -377,7 +405,7 @@ const formatSpanSetsChunk = (spanSets) => __awaiter(void 0, void 0, void 0, func
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userContent },
             ],
-        }, { timeout: 30000 });
+        }, { timeout: index_2.FORMAT_BATCH_TIMEOUT_LIMIT });
         raw = (_a = completion.choices[0].message.content) !== null && _a !== void 0 ? _a : '';
     }
     catch (err) {
