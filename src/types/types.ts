@@ -49,6 +49,10 @@ export type RootSpanQueryParams = {
   spanName: string | undefined;
   pageNumber: string | undefined;
   numberPerPage: string | undefined;
+  searchText?: string | undefined;
+  dateFilter?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
 };
 
 export interface AnnotatedRootSpan {

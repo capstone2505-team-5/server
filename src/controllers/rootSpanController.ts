@@ -1,5 +1,5 @@
 import { Request, Response } from "express";    
-import { fetchEditBatchSpans, fetchRootSpans, getRootSpanById, RootSpanNotFoundError } from "../services/rootSpanService";
+import { fetchEditBatchSpans, fetchRootSpans, getRootSpanById, RootSpanNotFoundError, fetchUniqueSpanNames, fetchRandomSpans } from "../services/rootSpanService";
 import { FIRST_PAGE, DEFAULT_PAGE_QUANTITY, MAX_SPANS_PER_PAGE } from '../constants/index';
 
 export const getRootSpans = async (req: Request, res: Response) => {
@@ -8,6 +8,10 @@ export const getRootSpans = async (req: Request, res: Response) => {
   const spanName = req.query.spanName as string | undefined;
   const pageNumber = req.query.pageNumber as string | undefined;
   const numberPerPage = req.query.numPerPage as string | undefined;
+  const searchText = req.query.searchText as string | undefined;
+  const dateFilter = req.query.dateFilter as string | undefined;
+  const startDate = req.query.startDate as string | undefined;
+  const endDate = req.query.endDate as string | undefined;
 
   if (!projectId && !batchId) {
     res.status(400).json( {error: "Either projectId or batchID is required"} );
@@ -21,6 +25,10 @@ export const getRootSpans = async (req: Request, res: Response) => {
       spanName,
       pageNumber,
       numberPerPage,
+      searchText,
+      dateFilter,
+      startDate,
+      endDate,
     });
 
     res.json({ rootSpans, totalCount });
@@ -73,5 +81,42 @@ export const getEditBatchSpans = async (req: Request, res: Response) => {
   } catch (err) {
     console.error(`Error fetching spans for edit batch:`, err);
     res.status(500).json({ error: 'Failed to fetch spans to edit' });
+  }
+};
+
+export const getUniqueSpanNames = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId;
+    
+    if (!projectId) {
+      res.status(400).json({ error: "projectId is required" });
+      return;
+    }
+
+    const spanNames = await fetchUniqueSpanNames(projectId);
+    res.json({ spanNames });
+  } catch (err) {
+    console.error(`Error fetching unique span names:`, err);
+    res.status(500).json({ error: 'Failed to fetch unique span names' });
+  }
+};
+
+export const getRandomSpans = async (req: Request, res: Response) => {
+  try {
+    const projectId = req.params.projectId;
+    
+    if (!projectId) {
+      res.status(400).json({ error: "projectId is required" });
+      return;
+    }
+
+    const { rootSpans, totalCount } = await fetchRandomSpans({
+      projectId,
+    });
+
+    res.json({ rootSpans, totalCount });
+  } catch (err) {
+    console.error(`Error fetching random spans:`, err);
+    res.status(500).json({ error: 'Failed to fetch random spans' });
   }
 };

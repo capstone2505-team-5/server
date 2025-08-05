@@ -7,7 +7,7 @@ import {
     deleteAnnotation, 
     updateAnnotation 
 } from "../controllers/annotationController";
-import { getEditBatchSpans, getRootSpan, getRootSpans } from "../controllers/rootSpanController";
+import { getEditBatchSpans, getRootSpan, getRootSpans, getUniqueSpanNames, getRandomSpans } from "../controllers/rootSpanController";
 import { getProjects } from "../controllers/projectController";
 import { 
     removeSpanFromBatch, 
@@ -31,6 +31,12 @@ router.get('/rootSpans', getRootSpans);
 
 // Get a single root span by id
 router.get('/rootSpans/:id', getRootSpan);
+
+// Get unique span names for a project
+router.get('/projects/:projectId/spanNames', getUniqueSpanNames);
+
+// Get random spans for a project
+router.get('/projects/:projectId/randomSpans', getRandomSpans);
 
 // ANNOTATIONS ROUTES
 
