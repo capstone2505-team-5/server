@@ -168,13 +168,16 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
         COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
         COALESCE(
           (
-            SELECT json_object_agg(c.text, COUNT(*)::int)
-            FROM root_spans rs2
-            JOIN annotations a2 ON a2.root_span_id = rs2.id
-            JOIN annotation_categories ac2 ON ac2.annotation_id = a2.id
-            JOIN categories c ON c.id = ac2.category_id
-            WHERE rs2.batch_id = b.id
-            GROUP BY c.text
+            SELECT json_object_agg(category_text, category_count)
+            FROM (
+              SELECT c.text as category_text, COUNT(*)::int as category_count
+              FROM root_spans rs2
+              JOIN annotations a2 ON a2.root_span_id = rs2.id
+              JOIN annotation_categories ac2 ON ac2.annotation_id = a2.id
+              JOIN categories c ON c.id = ac2.category_id
+              WHERE rs2.batch_id = b.id
+              GROUP BY c.text
+            ) category_counts
           ),
           '{}'::json
         ) AS categories
