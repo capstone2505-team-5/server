@@ -6,7 +6,7 @@ import type {
   FormattedSpanSet, 
   FormattedRootSpan, 
   AnnotatedRootSpan, 
-  Rating, 
+  RawRootSpanRow,
   AllRootSpansResult ,
   FormattedRootSpansResult,
 } from '../types/types';
