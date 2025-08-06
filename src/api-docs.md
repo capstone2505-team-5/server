@@ -1,6 +1,6 @@
 # API Documentation
 
-**Last Updated:** Augst 5th, 2025
+**Last Updated:** Augst 6th, 2025 12:25AM
 
 ## Table of Contents
 
