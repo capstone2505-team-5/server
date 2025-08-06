@@ -68,7 +68,7 @@ export const categorizeBatch = async (batchId: string): Promise<CategorizeResult
 
 // categorizedRootSpans contains root spans each paired with their own array of categories
 // each root span/category pair is added to the join table annotation_categories
-const addCategoriesToAnnotations = async (
+export const addCategoriesToAnnotations = async (
   categories: Category[], // Used to get categoryId from category text
   annotations: Annotation[], // Used to get annotation Id from the RootSpanId
   categorizedRootSpans: CategorizedRootSpan[] // RootSpanId with categories to apply
@@ -120,7 +120,7 @@ const mapAnnotations = (annotations: Annotation[]): Map<string, string> => {
   );
 }
 
-const createCategories = async (notes: string[]): Promise<string[]> => {
+export const createCategories = async (notes: string[]): Promise<string[]> => {
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   Group similar annotation notes into failure-mode categories.
@@ -162,19 +162,19 @@ const createCategories = async (notes: string[]): Promise<string[]> => {
   }
 };
 
-const pullNotes = (fullAnnotations: Annotation[]): string[] => {
+export const pullNotes = (fullAnnotations: Annotation[]): string[] => {
   return fullAnnotations.map(annotation => {
     return annotation.note;
   });
 };
 
-const pullNotesWithRootSpanId = (fullAnnotations: Annotation[]): string[] => {
+export const pullNotesWithRootSpanId = (fullAnnotations: Annotation[]): string[] => {
   return fullAnnotations.map(annotation => {
     return `${annotation.note}\nrootSpanID: ${annotation.rootSpanId}`;
   });
 };
 
-const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId: string[]): Promise<CategorizedRootSpan[]> => {
+export const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId: string[]): Promise<CategorizedRootSpan[]> => {
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   You are provided a list of error categories.

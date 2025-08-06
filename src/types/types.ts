@@ -43,6 +43,25 @@ export interface RootSpan {
   spanName: string | null;
 }
 
+export type RawRootSpanRow = {
+  root_span_id: string;
+  trace_id: string;
+  batch_id: string | null;
+  input: string;
+  output: string;
+  project_id: string;
+  span_name: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  formatted_input?: string;
+  formatted_output?: string;
+  annotation_id: string | null;
+  note: string | null;
+  rating: Rating | null;
+  categories: string[];
+};
+
 export type RootSpanQueryParams = {
   batchId: string | undefined;
   projectId: string | undefined;
