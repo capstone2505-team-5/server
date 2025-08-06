@@ -9,7 +9,7 @@ import {
 } from '../services/batchService';
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
-import { fetchRootSpans, nullifyBatchId } from '../services/rootSpanService';
+import { fetchFormattedRootSpans, nullifyBatchId } from '../services/rootSpanService';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
@@ -52,8 +52,8 @@ export const createBatch = async (req: Request, res: Response) => {
 };
 
 export const getBatch = async (req: Request, res: Response) => {
+  const projectId = undefined;
   const batchId = req.params.id as string | undefined;
-  const projectId = req.query.projectId as string | undefined;
   const spanName = req.query.spanName as string | undefined;
   const pageNumber = req.query.pageNumber as string | undefined;
   const numberPerPage = req.query.numPerPage as string | undefined;
@@ -65,7 +65,7 @@ export const getBatch = async (req: Request, res: Response) => {
       return
     }
     
-    const { rootSpans, totalCount } = await fetchRootSpans({
+    const { rootSpans, totalCount } = await fetchFormattedRootSpans({
       batchId,
       projectId,
       spanName,
