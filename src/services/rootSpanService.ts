@@ -9,7 +9,6 @@ import type {
   Rating, 
   AllRootSpansResult ,
   FormattedRootSpansResult,
-  RawRootSpanRow
 } from '../types/types';
 
 export class RootSpanNotFoundError extends Error {
