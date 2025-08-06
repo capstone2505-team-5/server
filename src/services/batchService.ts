@@ -22,54 +22,84 @@ import { removeAnnotationFromSpans } from './annotationService';
 import { sendSSEUpdate, closeSSEConnection } from './sseService';
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
-export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
+export const getBatchSummariesByProject = async (
+  projectId: string
+): Promise<BatchSummary[]> => {
   try {
-    const query = `
+    // First, get the basic batch info with stats
+    const batchQuery = `
       SELECT 
         b.id,
         b.project_id,
         b.name,
         b.created_at,
         COUNT(DISTINCT rs.id) AS valid_root_span_count,
-        COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
-        COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
-        COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+        COUNT(DISTINCT a.id)::float 
+          / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
+        COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float
+          / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good
       FROM batches b
       LEFT JOIN root_spans rs ON rs.batch_id = b.id
       LEFT JOIN annotations a ON a.root_span_id = rs.id
-      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
-      LEFT JOIN categories c ON ac.category_id = c.id
       WHERE b.project_id = $1
       GROUP BY b.id, b.project_id, b.name, b.created_at
       ORDER BY b.created_at DESC;
     `;
 
-    const result = await pool.query<{
-      id: string;
-      project_id: string;
-      name: string;
-      created_at: Date;
-      valid_root_span_count: number;
-      percent_annotated: number | null;
-      percent_good: number | null;
-      categories: string[];
-    }>(query, [projectId]);
+    // Then get category counts for all batches in this project
+    const categoryQuery = `
+      SELECT 
+        rs.batch_id,
+        c.text AS category_text,
+        COUNT(*)::int AS category_count
+      FROM root_spans rs
+      JOIN annotations a ON a.root_span_id = rs.id
+      JOIN annotation_categories ac ON ac.annotation_id = a.id
+      JOIN categories c ON c.id = ac.category_id
+      JOIN batches b ON b.id = rs.batch_id
+      WHERE b.project_id = $1
+      GROUP BY rs.batch_id, c.text
+      ORDER BY rs.batch_id, c.text;
+    `;
 
-    return result.rows.map((row): BatchSummary => ({
+    const [batchResult, categoryResult] = await Promise.all([
+      pool.query(batchQuery, [projectId]),
+      pool.query(categoryQuery, [projectId])
+    ]);
+
+    // Build a map of batch_id -> categories
+    const categoryMap = new Map<string, Record<string, number>>();
+    
+    for (const row of categoryResult.rows) {
+      const batchId = row.batch_id;
+      if (!categoryMap.has(batchId)) {
+        categoryMap.set(batchId, {});
+      }
+      categoryMap.get(batchId)![row.category_text] = row.category_count;
+    }
+
+    return batchResult.rows.map((row): BatchSummary => ({
       id: row.id,
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
-      validRootSpanCount: row.valid_root_span_count,
-      percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
-      percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
-      categories: row.categories,
+      validRootSpanCount: Number(row.valid_root_span_count),
+      percentAnnotated:
+        row.percent_annotated !== null
+          ? parseFloat(row.percent_annotated.toFixed(2))
+          : null,
+      percentGood:
+        row.percent_good !== null
+          ? parseFloat(row.percent_good.toFixed(2))
+          : null,
+      categories: categoryMap.get(row.id) || {}
     }));
   } catch (error) {
     console.error('Error fetching batch summaries:', error);
     throw new Error('Failed to fetch batch summaries');
   }
 };
+
 
 export const createNewBatch = async (
   batch: NewBatch
@@ -132,17 +162,27 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
         b.id,
         b.project_id,
         b.name,
-        COUNT(DISTINCT rs.id) AS span_count,
+        b.created_at,
+        COUNT(DISTINCT rs.id) AS valid_root_span_count,
         COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
         COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
-        COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+        COALESCE(
+          (
+            SELECT json_object_agg(c.text, COUNT(*)::int)
+            FROM root_spans rs2
+            JOIN annotations a2 ON a2.root_span_id = rs2.id
+            JOIN annotation_categories ac2 ON ac2.annotation_id = a2.id
+            JOIN categories c ON c.id = ac2.category_id
+            WHERE rs2.batch_id = b.id
+            GROUP BY c.text
+          ),
+          '{}'::json
+        ) AS categories
       FROM batches b
       LEFT JOIN root_spans rs ON rs.batch_id = b.id
       LEFT JOIN annotations a ON a.root_span_id = rs.id
-      LEFT JOIN annotation_categories ac ON ac.annotation_id = a.id
-      LEFT JOIN categories c ON c.id = ac.category_id
       WHERE b.id = $1
-      GROUP BY b.id, b.project_id, b.name
+      GROUP BY b.id, b.project_id, b.name, b.created_at
     `;
 
     const result = await pool.query(query, [batchId]);
@@ -151,7 +191,30 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
       throw new BatchNotFoundError(batchId);
     }
 
-    return result.rows[0] as BatchSummary;
+    const row = result.rows[0];
+    console.log('Single batch raw categories from DB:', row.categories);
+    console.log('Single batch categories type:', typeof row.categories);
+    
+    // Parse categories if it's a string
+    let categories = row.categories;
+    if (typeof categories === 'string') {
+      try {
+        categories = JSON.parse(categories);
+      } catch (e) {
+        console.error('Failed to parse single batch categories:', e);
+        categories = {};
+      }
+    }
+    
+    return {
+      ...row,
+      categories: categories,
+      createdAt: row.created_at.toISOString(),
+      projectId: row.project_id,
+      validRootSpanCount: row.valid_root_span_count,
+      percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
+      percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
+    } as BatchSummary;
   } catch (e) {
     console.error("failed to get batch in database", e);
     throw (e);
