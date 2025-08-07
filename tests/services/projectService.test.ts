@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getProjectSummaries } from '../../src/services/projectService';
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 
+const mockQuery = vi.fn();
 // Mock the database pool
 vi.mock('../../src/db/postgres', () => ({
-  pool: {
-    query: vi.fn(),
-  }
+  getPool: () => ({
+    query: mockQuery,
+  })
 }));
-
-const mockQuery = vi.mocked(pool.query) as any;
 
 describe('ProjectService', () => {
   beforeEach(() => {

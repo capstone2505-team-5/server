@@ -1,4 +1,4 @@
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { 
   FormattedSpanSet,
@@ -22,9 +22,8 @@ import { removeAnnotationFromSpans } from './annotationService';
 import { sendSSEUpdate, closeSSEConnection } from './sseService';
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
-export const getBatchSummariesByProject = async (
-  projectId: string
-): Promise<BatchSummary[]> => {
+export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
+  const pool = getPool();
   try {
     // First, get the basic batch info with stats
     const batchQuery = `
@@ -104,6 +103,7 @@ export const getBatchSummariesByProject = async (
 export const createNewBatch = async (
   batch: NewBatch
 ): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     const id = uuidv4();
     const { name, rootSpanIds, projectId } = batch;
@@ -156,6 +156,7 @@ export const createNewBatch = async (
 };
 
 export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary> => {
+  const pool = getPool();
   try {
   const query = `
       SELECT 
@@ -196,6 +197,7 @@ export const updateBatchById = async (
   batchId: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     const { 
       name: newName, 
@@ -261,6 +263,7 @@ export const updateBatchById = async (
 };
 
 export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     // fetch spans before deletion
     const spansResult = await pool.query<{ id: string }>(
@@ -538,6 +541,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 };
 
 const markBatchFormatted = async (batchId: string) => {
+  const pool = getPool();
   try {
     const query = `
       UPDATE batches

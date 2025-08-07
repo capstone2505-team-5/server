@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  A serverless application that runs an Express.js API on AWS Lambda.
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  ExpressAppFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/
+      Handler: lambda-handler.handler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ExpressApiUrl:
+    Description: "API Gateway endpoint URL for your Express application"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
