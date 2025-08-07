@@ -1,5 +1,6 @@
 import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import type { 
   FormattedSpanSet,
   SpanSet, 
@@ -19,7 +20,7 @@ import { openai } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
-import { sendSSEUpdate, closeSSEConnection } from './sseService';
+
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
@@ -31,6 +32,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
         b.project_id,
         b.name,
         b.created_at,
+        b.formatted_at,
         COUNT(DISTINCT rs.id) AS valid_root_span_count,
         COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
         COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
@@ -50,6 +52,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       project_id: string;
       name: string;
       created_at: Date;
+      formatted_at: Date | null;
       valid_root_span_count: number;
       percent_annotated: number | null;
       percent_good: number | null;
@@ -61,6 +64,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
+      formattedAt: row.formatted_at ? row.formatted_at.toISOString() : null,
       validRootSpanCount: row.valid_root_span_count,
       percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
       percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
@@ -117,8 +121,31 @@ export const createNewBatch = async (
       );
     }
 
-    console.log(`Attempting to async format batch ${id}`);
-    formatBatch(id);
+    // console.log(`Attempting to async format batch ${id}`);
+    // formatBatch(id);
+    const isLocal = process.env.AWS_SAM_LOCAL === 'true';
+
+    // When running locally, we need to tell the SDK to target the local SAM endpoint.
+    // The AWS_SAM_LOCAL environment variable is set by `sam local` automatically.
+    const lambda = new LambdaClient(
+      isLocal
+        ? {
+            endpoint: 'http://host.docker.internal:3001',
+            region: 'us-east-1',
+            credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+          }
+        : {}
+    );
+
+    // The FunctionName is the logical ID from your template.yaml
+    const command = new InvokeCommand({
+      FunctionName: 'FormatBatchFunction',
+      InvocationType: isLocal ? 'RequestResponse' : 'Event', // local emulator needs RequestResponse
+      Payload: JSON.stringify({ batchId: id }),
+    });
+
+    await lambda.send(command);
+    console.log(`Successfully invoked FormatBatchFunction for batch ${id}`);
 
     return { id, projectId, name, rootSpanIds };
   } catch (e) {
@@ -277,57 +304,21 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
-    sendSSEUpdate(batchId, { 
-      status: 'started', 
-      message: 'Batch formatting started',
-      progress: 0,
-      timestamp: new Date().toISOString()
-    });
-
     console.log(`Starting to format batch ${batchId}`);
     const spanSets = await getSpanSetsFromBatch(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
 
-    sendSSEUpdate(batchId, { 
-      status: 'processing', 
-      message: `Processing ${spanSets.length} spans with AI`,
-      progress: 25 
-    });
-
     const formattedSpanSets = await formatAllSpanSets(spanSets);
     console.log(`${formattedSpanSets.length} span sets formatted`);
-
-    sendSSEUpdate(batchId, { 
-      status: 'saving', 
-      message: 'Saving formatted data to database',
-      progress: 75 
-    });
 
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
     console.log(`${updateDbResult.updated} root spans formatted in DB`);
     await markBatchFormatted(batchId);
 
-    sendSSEUpdate(batchId, { 
-      status: 'completed', 
-      message: `Successfully formatted ${updateDbResult.updated} spans`,
-      progress: 100,
-      timestamp: new Date().toISOString()
-    });
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
   } catch (e) {
     console.error("batch formatting error");
     
     const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
-
-    sendSSEUpdate(batchId, { 
-      status: 'failed', 
-      message: 'Batch formatting failed',
-      error: errorMessage,
-      timestamp: new Date().toISOString()
-    })
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
 
     throw new Error("Error formatting batch");
   }

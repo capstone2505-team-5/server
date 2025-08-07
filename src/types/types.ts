@@ -168,6 +168,7 @@ export interface BatchSummary {
   percentAnnotated: number | null;
   percentGood: number | null;
   categories: string[];
+  formattedAt: string | null;
 }
 
 export interface BatchDetail {

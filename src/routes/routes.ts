@@ -19,7 +19,7 @@ import {
     formatBatchByLLM, 
 } from "../controllers/batchController";
 import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
-import { connectToBatchEvents } from "../controllers/sseController";
+
 
 const router = Router();
 
@@ -93,9 +93,6 @@ router.post('/batches/:batchId/format', formatBatchByLLM);
 // Get the Phoenix dashboard/API URL
 router.get('/phoenixDashboardUrl', getPhoenixDashboardUrl);
 
-// SSE ROUTES
 
-// SSE connection for batch formatting updates  
-router.get('/batches/:id/events', connectToBatchEvents);
 
 export default router

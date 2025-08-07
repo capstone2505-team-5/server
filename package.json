@@ -45,6 +45,7 @@
     "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.863.0",
     "openai": "^5.9.0",
     "pg": "^8.16.3",
     "uuid": "^11.1.0"
