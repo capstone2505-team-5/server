@@ -1,8 +1,9 @@
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { Category } from '../types/types';
 
 export const addCategories = async (categories: string[]): Promise<Category[]> => {
+  const pool = getPool();
   try {
     const values: string[] = [];
     const placeholders: string[] = [];

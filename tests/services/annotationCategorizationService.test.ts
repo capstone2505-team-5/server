@@ -7,7 +7,7 @@ import {
   pullNotes,
   pullNotesWithRootSpanId
 } from '../../src/services/annotationCategorizationService';
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 import { openai } from '../../src/lib/openaiClient';
 import { getAnnotationsByBatch, clearCategoriesFromAnnotations } from '../../src/services/annotationService';
 import { addCategories } from '../../src/services/categoryService';
@@ -16,10 +16,11 @@ import { jsonCleanup } from '../../src/utils/jsonCleanup';
 import type { Annotation, Category, CategorizedRootSpan } from '../../src/types/types';
 
 // Mock all external dependencies
+const mockQuery = vi.fn();
 vi.mock('../../src/db/postgres', () => ({
-  pool: {
-    query: vi.fn(),
-  }
+  getPool: () => ({
+    query: mockQuery,
+  })
 }));
 
 vi.mock('../../src/lib/openaiClient', () => ({
@@ -49,12 +50,10 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid')
 }));
 
-const mockQuery = vi.mocked(pool.query);
 const mockOpenAI = vi.mocked(openai.chat.completions.create);
 const mockGetAnnotationsByBatch = vi.mocked(getAnnotationsByBatch);
 const mockClearCategoriesFromAnnotations = vi.mocked(clearCategoriesFromAnnotations);
 const mockAddCategories = vi.mocked(addCategories);
-const mockJsonCleanup = vi.mocked(jsonCleanup);
 
 describe('AnnotationCategorizationService', () => {
   beforeEach(() => {
@@ -88,7 +87,6 @@ describe('AnnotationCategorizationService', () => {
         }
       ];
 
-      const mockCategories = ['spelling', 'speed'];
       const mockCategoriesWithIds: Category[] = [
         { id: 'cat-1', text: 'spelling' },
         { id: 'cat-2', text: 'speed' }

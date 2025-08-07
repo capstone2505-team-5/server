@@ -1,4 +1,4 @@
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { CategorizedAnnotation, CategorizedRootSpan, Category, Annotation } from '../types/types';
 import { getAnnotationsByBatch, clearCategoriesFromAnnotations } from './annotationService';
@@ -73,6 +73,7 @@ export const addCategoriesToAnnotations = async (
   annotations: Annotation[], // Used to get annotation Id from the RootSpanId
   categorizedRootSpans: CategorizedRootSpan[] // RootSpanId with categories to apply
 ): Promise<CategorizedAnnotation[]> => {
+  const pool = getPool();
   try {
     const catMap = mapCategories(categories);
     const annMap = mapAnnotations(annotations);

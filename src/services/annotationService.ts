@@ -1,5 +1,5 @@
 import type { Annotation, NewAnnotation, Rating } from '../types/types';
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -11,6 +11,7 @@ export class AnnotationNotFoundError extends Error {
 }
 
 export const getAllAnnotations = async (): Promise<Annotation[]> => {
+  const pool = getPool();
   try {
     const query = `
       SELECT 
@@ -47,6 +48,7 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
 };
 
 export const getAnnotationsByBatch = async (batchId: string): Promise<Annotation[]> => {
+  const pool = getPool();
   try {
     const query = `
       SELECT 
@@ -86,6 +88,7 @@ export const getAnnotationsByBatch = async (batchId: string): Promise<Annotation
 };
 
 export const getAnnotationById = async (id: string): Promise<Annotation> => {
+  const pool = getPool();
   try {
     const query = `
       SELECT 
@@ -135,6 +138,7 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 
 
 export const createNewAnnotation = async (annotation: NewAnnotation): Promise<Annotation> => {
+  const pool = getPool();
   const { rootSpanId, note, rating } = annotation;
   const id = uuidv4();
 
@@ -174,6 +178,7 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
 }
 
 export const updateAnnotationById = async (id: string, updates: Partial<Annotation>) => {
+  const pool = getPool();
   try {
     const fields = [];
     const values = [];
@@ -232,6 +237,7 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
 }
 
 export const deleteAnnotationById = async (id: string): Promise<Annotation | void> => {
+  const pool = getPool();
   try {
     const query = `
       DELETE FROM annotations
@@ -265,6 +271,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
 }
 
 export const clearCategoriesFromAnnotations = async (annotationIds: string[]) => {
+  const pool = getPool();
   try {
     // First, find all categories currently assigned to these annotations
     const findCategoriesQuery = `
@@ -299,6 +306,7 @@ export const clearCategoriesFromAnnotations = async (annotationIds: string[]) =>
 };
 
 export const removeAnnotationFromSpans = async (rootSpans: string[]) => {
+  const pool = getPool();
   try {
     if (rootSpans.length < 1) {
       throw new Error("No root spans provided to remove annotations")
