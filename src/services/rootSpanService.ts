@@ -24,6 +24,10 @@ export const fetchRootSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
+  searchText,
+  dateFilter,
+  startDate,
+  endDate,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
@@ -63,6 +67,40 @@ export const fetchRootSpans = async ({
       whereClauses.push(`r.span_name = $${params.length}`);
     }
 
+    // Add text search filtering
+    if (searchText && searchText.trim()) {
+      params.push(`%${searchText.trim()}%`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
+    }
+
+    // Add date filtering
+    if (dateFilter && dateFilter !== 'all') {
+      let dateCondition = '';
+      
+      switch (dateFilter) {
+        case '12h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          break;
+        case '24h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          break;
+        case '1w':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            params.push(startDate, endDate);
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+          }
+          break;
+      }
+      
+      if (dateCondition) {
+        whereClauses.push(dateCondition);
+      }
+    }
+
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     const offset = (pageNum - 1) * numPerPage;
@@ -94,7 +132,7 @@ export const fetchRootSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -135,7 +173,7 @@ export const fetchRootSpans = async ({
       totalCount: parseInt(countResult.rows[0].count, 10),
     };
   } catch (error) {
-    console.error("Error in getAllRootSpans:", error);
+    console.error("Error in fetchRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
   }
 };
@@ -256,6 +294,10 @@ export const fetchEditBatchSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
+  searchText,
+  dateFilter,
+  startDate,
+  endDate,
 }: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
@@ -294,6 +336,40 @@ export const fetchEditBatchSpans = async ({
       whereClauses.push(`r.span_name = $${params.length}`);
     }
 
+    // Add text search filtering
+    if (searchText && searchText.trim()) {
+      params.push(`%${searchText.trim()}%`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
+    }
+
+    // Add date filtering
+    if (dateFilter && dateFilter !== 'all') {
+      let dateCondition = '';
+      
+      switch (dateFilter) {
+        case '12h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          break;
+        case '24h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          break;
+        case '1w':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            params.push(startDate, endDate);
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+          }
+          break;
+      }
+      
+      if (dateCondition) {
+        whereClauses.push(dateCondition);
+      }
+    }
+
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     const offset = (pageNum - 1) * numPerPage;
@@ -325,7 +401,7 @@ export const fetchEditBatchSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -396,7 +472,6 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
       WHERE root_spans.id = updates.span_id
     `;
     
-    console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
     const result = await pool.query(query, params);
     return { updated: result.rowCount || 0 };
   } catch (e) {
@@ -499,7 +574,7 @@ export const fetchFormattedRootSpans = async ({
         r.end_time, r.created_at,
         r.formatted_input, r.formatted_output,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -544,5 +619,118 @@ export const fetchFormattedRootSpans = async ({
   } catch (error) {
     console.error("Error in getAllRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
+  }
+};
+
+export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]> => {
+  try {
+    const query = `
+      SELECT DISTINCT span_name 
+      FROM root_spans 
+      WHERE project_id = $1 
+        AND span_name IS NOT NULL 
+        AND span_name != ''
+      ORDER BY span_name ASC
+    `;
+
+    const result = await pool.query<{ span_name: string }>(query, [projectId]);
+    return result.rows.map(row => row.span_name);
+  } catch (error) {
+    console.error("Error fetching unique span names:", error);
+    throw new Error("Failed to fetch unique span names from the database");
+  }
+};
+
+export const fetchRandomSpans = async ({
+  projectId,
+}: { projectId: string }): Promise<AllRootSpansResult> => {
+  try {
+    const whereClauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    // Always filter by project and exclude batched spans
+    params.push(projectId);
+    whereClauses.push(`r.project_id = $${params.length}`);
+    whereClauses.push(`r.batch_id IS NULL`);
+
+    const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+
+    // Get 50 random spans from the most recent 200 spans
+    const query = `
+      WITH recent_spans AS (
+        SELECT 
+          r.id,
+          r.trace_id,
+          r.batch_id,
+          r.input,
+          r.output,
+          r.project_id,
+          r.span_name,
+          r.start_time,
+          r.end_time,
+          r.created_at
+        FROM root_spans r
+        ${whereSQL}
+        ORDER BY r.created_at DESC
+        LIMIT 200
+      )
+      SELECT 
+        id,
+        trace_id,
+        batch_id,
+        input,
+        output,
+        project_id,
+        span_name,
+        start_time,
+        end_time,
+        created_at
+      FROM recent_spans
+      ORDER BY RANDOM()
+      LIMIT 50;
+    `;
+
+    const countQuery = `
+      SELECT COUNT(*) FROM root_spans r
+      ${whereSQL}
+    `;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query<{
+        id: string;
+        trace_id: string;
+        batch_id: string | null;
+        input: string;
+        output: string;
+        project_id: string;
+        span_name: string;
+        start_time: string;
+        end_time: string;
+        created_at: string;
+      }>(query, params),
+      pool.query(countQuery, params),
+    ]);
+
+    const rootSpans: AnnotatedRootSpan[] = dataResult.rows.map(row => ({
+      id: row.id,
+      traceId: row.trace_id,
+      batchId: row.batch_id,
+      input: row.input,
+      output: row.output,
+      projectId: row.project_id,
+      spanName: row.span_name,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      createdAt: row.created_at,
+      annotation: null, // Random spans don't have annotations
+    }));
+
+    return {
+      rootSpans,
+      totalCount: Math.min(50, parseInt(countResult.rows[0].count, 10)), // Cap at 50 for random
+    };
+  } catch (error) {
+    console.error("Error fetching random spans:", error);
+    throw new Error("Failed to fetch random spans from the database");
   }
 };

@@ -1,6 +1,6 @@
 # API Documentation
 
-**Last Updated:** August 3rd, 2025
+**Last Updated:** Augst 6th, 2025 12:25AM
 
 ## Table of Contents
 
@@ -33,15 +33,37 @@ Retrieves paginated root spans with optional filtering.
 |-----------|------|----------|-------------|
 | `projectId` | string | Yes* | Filter by project ID |
 | `batchId` | string | Yes* | Filter by batch ID |
-| `spanName` | string | No | Filter by span name |
+| `spanName` | string | No | Filter by exact span name |
+| `searchText` | string | No | Search within input/output content (case-insensitive) |
+| `dateFilter` | string | No | Time period filter: `'12h'`, `'24h'`, `'1w'`, or `'custom'` |
+| `startDate` | string | No | Custom start date (ISO string, requires `dateFilter='custom'`) |
+| `endDate` | string | No | Custom end date (ISO string, requires `dateFilter='custom'`) |
 | `pageNumber` | number | No | Page number (default: 1) |
 | `numPerPage` | number | No | Items per page (default: 20) |
 
 *Either `projectId` or `batchId` is required. If `batchId` is not provided, only shows spans not in any batch.
 
-**Example Request:**
+**Date Filtering:**
+- Date filters use the span's `start_time` (when the span occurred) not `created_at` (when imported)
+- Preset filters (`12h`, `24h`, `1w`) are relative to current time
+- Custom date range requires both `startDate` and `endDate` in ISO format
+
+**Example Requests:**
 ```
+# Basic filtering
 GET /api/rootSpans?projectId=proj_abc123&spanName=generateResponse&pageNumber=1&numPerPage=10
+
+# Text search
+GET /api/rootSpans?projectId=proj_abc123&searchText=weather&pageNumber=1
+
+# Date filtering - last 24 hours
+GET /api/rootSpans?projectId=proj_abc123&dateFilter=24h
+
+# Custom date range
+GET /api/rootSpans?projectId=proj_abc123&dateFilter=custom&startDate=2025-07-10T00:00:00.000Z&endDate=2025-07-15T23:59:59.999Z
+
+# Combined filtering
+GET /api/rootSpans?projectId=proj_abc123&searchText=turkey&spanName=chat_endpoint&dateFilter=1w&pageNumber=1&numPerPage=25
 ```
 
 **Response:**
@@ -443,6 +465,76 @@ POST /api/batches/batch_ghi012/format
   timestamp: "2025-01-08T10:30:00.000Z"
 }
 ```
+
+### `GET /api/projects/:projectId/spanNames`
+
+Retrieves all unique span names for a project, useful for populating filter dropdowns.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | Project ID |
+
+**Example Request:**
+```
+GET /api/projects/proj_abc123/spanNames
+```
+
+**Response:**
+```typescript
+{
+  spanNames: [
+    "chat_endpoint",
+    "get_agent_response", 
+    "generateResponse",
+    "processUserInput",
+    "validateInput"
+  ]
+}
+```
+
+### `GET /api/projects/:projectId/randomSpans`
+
+Retrieves 50 random spans from the most recent 200 unbatched spans in a project. Useful for sampling data for batch creation.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `projectId` | string | Yes | Project ID |
+
+**Example Request:**
+```
+GET /api/projects/proj_abc123/randomSpans
+```
+
+**Response:**
+```typescript
+{
+  rootSpans: [
+    {
+      id: "span_random1",
+      traceId: "trace_abc123",
+      batchId: null,
+      input: "What's the weather like?",
+      output: "It's sunny and 72°F today.",
+      projectId: "proj_abc123",
+      spanName: "chat_endpoint",
+      startTime: "2025-07-19T07:27:49.000Z",
+      endTime: "2025-07-19T07:27:51.500Z",
+      createdAt: "2025-08-04T10:30:00.000Z",
+      annotation: null
+    }
+    // ... 49 more random spans
+  ],
+  totalCount: 50
+}
+```
+
+**Notes:**
+- Only returns unbatched spans (`batchId: null`)
+- Selects from the 200 most recent spans by `created_at` to ensure relevance
+- All returned spans have `annotation: null` since they're meant for new batch creation
+- Always returns exactly 50 spans (or fewer if less than 50 available)
 
 ---
 
