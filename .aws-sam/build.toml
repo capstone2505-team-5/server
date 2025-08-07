@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "lambda-handler.handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["ExpressAppFunction"]
+functions = ["ExpressAppFunction", "FormatBatchFunction"]
 
 [layer_build_definitions]

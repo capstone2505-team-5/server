@@ -17,12 +17,29 @@ Resources:
       Runtime: nodejs22.x
       Architectures:
         - x86_64
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FormatBatchFunction
       Events:
         Api:
           Type: Api
           Properties:
             Path: /{proxy+}
             Method: ANY
+
+  FormatBatchFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: dist/
+      Handler: format-batch-handler.handler
+      Runtime: nodejs22.x
+      Timeout: 300
+      MemorySize: 512
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          PG_DATABASE_URL: "postgres://dev_user:dev_password@host.docker.internal:5432/error_analysis"
 
 Outputs:
   ExpressApiUrl:

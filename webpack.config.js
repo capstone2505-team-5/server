@@ -2,7 +2,10 @@ const path = require('path');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  entry: './src/lambda-handler.ts',
+  entry: {
+    'lambda-handler': './src/lambda-handler.ts',
+    'format-batch-handler': './src/format-batch-handler.ts',
+  },
   target: 'node',
   mode: 'production',
   module: {
@@ -18,7 +21,7 @@ module.exports = {
     extensions: ['.ts', '.js'],
   },
   output: {
-    filename: 'lambda-handler.js',
+    filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
     libraryTarget: 'commonjs2',
   },
