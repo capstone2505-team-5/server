@@ -25,7 +25,7 @@ export const fetchRootSpans = async ({
   pageNumber,
   numberPerPage,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
-  const pool = getPool();
+  const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
 
@@ -142,7 +142,7 @@ export const fetchRootSpans = async ({
 };
 
 export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const query = `
       SELECT 
@@ -218,7 +218,7 @@ export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> =>
 };
 
 export const rootSpanExists = async (spanId: string): Promise<boolean> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const result = await pool.query(
       `
@@ -238,7 +238,7 @@ export const rootSpanExists = async (spanId: string): Promise<boolean> => {
 }
 
 export const nullifyBatchId = async (spanId: string, batchId: string): Promise<boolean> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
   const query = `
       UPDATE root_spans
@@ -261,7 +261,7 @@ export const fetchEditBatchSpans = async ({
   pageNumber,
   numberPerPage,
 }: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
-  const pool = getPool();
+  const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
   
@@ -377,7 +377,7 @@ export const fetchEditBatchSpans = async ({
 };
 
 export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSet[]): Promise<{updated: number}> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     // Build the VALUES clause with placeholders
     const valuesClauses: string[] = [];
@@ -412,7 +412,7 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
 };
 
 const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const query = `
       SELECT project_id 
@@ -439,7 +439,7 @@ export const fetchFormattedRootSpans = async ({
   pageNumber,
   numberPerPage,
 }: RootSpanQueryParams): Promise<FormattedRootSpansResult> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
     const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
