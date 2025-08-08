@@ -6,7 +6,7 @@ import app from './app'; // Standard default import
 
 const server = serverlessExpress({ app });
 
-export const handler = (event: APIGatewayProxyEvent, context: Context) => {
+export const handler = (event: APIGatewayProxyEvent, context: Context, callback: any) => {
   context.callbackWaitsForEmptyEventLoop = false;
-  return server(event, context);
+  return server(event, context, callback);
 };

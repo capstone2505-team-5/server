@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Category } from '../types/types';
 
 export const addCategories = async (categories: string[]): Promise<Category[]> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const values: string[] = [];
     const placeholders: string[] = [];
