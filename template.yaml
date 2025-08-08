@@ -14,6 +14,7 @@ Resources:
     Properties:
       CodeUri: dist/
       Handler: lambda-handler.handler
+      Timeout: 120
       Runtime: nodejs22.x
       Architectures:
         - x86_64

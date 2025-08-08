@@ -588,7 +588,11 @@ GET /api/projects/proj_abc123
     validRootSpanCount: 45,
     percentAnnotated: 78.5,
     percentGood: 82.3,
-    categories: ["helpful", "accurate", "polite"]
+    categories: {
+                  "bad spelling": 5,
+                  "too long": 3,
+                },
+    formattedAt: "2025-01-03T14:20:00.000Z",
   },
   {
     id: "batch_jkl345",
@@ -597,7 +601,11 @@ GET /api/projects/proj_abc123
     validRootSpanCount: 67,
     percentAnnotated: 65.2,
     percentGood: 91.7,
-    categories: ["accurate", "informative"]
+    categories: {
+                  "bad spelling": 4,
+                  "too short": 2,
+                },
+    formattedAt: "2025-01-03T14:20:00.000Z",
   }
 ]
 ```

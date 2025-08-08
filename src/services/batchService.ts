@@ -25,7 +25,9 @@ import { removeAnnotationFromSpans } from './annotationService';
 
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
-export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
+export const getBatchSummariesByProject = async (
+  projectId: string
+): Promise<BatchSummary[]> => {
   const pool = await getPool();
   try {
     // First, get the basic batch info with stats
@@ -48,6 +50,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       GROUP BY b.id, b.project_id, b.name, b.created_at
       ORDER BY b.created_at DESC;
     `;
+
     // Then get category counts for all batches in this project
     const categoryQuery = `
       SELECT 
@@ -94,8 +97,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
         row.percent_good !== null
           ? parseFloat(row.percent_good.toFixed(2))
           : null,
-      // Convert the per-category count map into an array of category names
-      categories: Object.keys(categoryMap.get(row.id) || {}),
+      categories: categoryMap.get(row.id) || {},
       formattedAt: row.formatted_at ? row.formatted_at.toISOString() : null,
     }));
   } catch (error) {
