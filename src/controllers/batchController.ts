@@ -6,6 +6,7 @@ import {
   updateBatchById,
   deleteBatchById,
   formatBatch,
+  isFormatted,
 } from '../services/batchService';
 import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
@@ -163,11 +164,33 @@ export const removeSpanFromBatch = async (req: Request, res: Response) => {
 export const formatBatchByLLM = async (req: Request, res: Response) => {
   try {
     const batchId = req.params.batchId;
-    if (batchId === undefined) throw new Error("missing batchId");
+    
+    if (!batchId) {
+      res.status(400).json({ error: "spanId and batchId required" })
+      return;
+    }
+
     await formatBatch(batchId);
     res.status(200).json({message: "success"});
   } catch (e) {
-    console.error(e);
-    throw e;
+    res.status(500).json({ error: "Failed to format batch" });
+    return;
+  }
+}
+
+export const getBatchStatus = async (req: Request, res: Response) => {
+  try {
+    const batchId = req.params.batchId;
+
+    if (!batchId) {
+      res.status(400).json({ error: "spanId and batchId required" })
+      return;
+    }
+
+    const result = await isFormatted(batchId);
+    res.status(200).json({ isFormatted: result })
+  } catch (e) {
+    res.status(500).json({ error: "Failed to check batch status" });
+    return;
   }
 }

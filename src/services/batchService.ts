@@ -571,3 +571,27 @@ const markBatchFormatted = async (batchId: string) => {
     throw e;
   }
 }
+
+export const isFormatted = async (batchId: string): Promise<boolean> => {
+  const pool = await getPool();
+
+  try {
+    const query = `
+      SELECT formatted_at
+      FROM batches
+      WHERE id = $1
+    `
+
+    const result = await pool.query(query, [batchId]);
+
+    if (result.rowCount === 0) {
+      throw new Error(`Batch ${batchId} not found`);
+    }
+
+    return !!result.rows[0].formatted_at;
+
+  } catch(e) {
+    console.error("failed to check if batch is formatted in database");
+    throw e;
+  }
+}
