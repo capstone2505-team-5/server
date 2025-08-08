@@ -8,13 +8,14 @@ import {
 } from '../../src/services/batchService';
 import { BatchNotFoundError } from '../../src/errors/errors';
 import { NewBatch, UpdateBatch } from '../../src/types/types';
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 
+const mockQuery = vi.fn();
 // Mock the database pool
 vi.mock('../../src/db/postgres', () => ({
-  pool: {
-    query: vi.fn(),
-  }
+  getPool: () => ({
+    query: mockQuery,
+  })
 }));
 
 // Mock external dependencies
@@ -54,8 +55,6 @@ vi.mock('../../src/services/rootSpanService', () => ({
 vi.mock('../../src/utils/jsonCleanup', () => ({
   jsonCleanup: vi.fn().mockReturnValue('[]')
 }));
-
-const mockQuery = vi.mocked(pool.query) as any;
 
 describe('BatchService', () => {
   beforeEach(() => {

@@ -8,21 +8,20 @@ import {
   AnnotationNotFoundError
 } from '../../src/services/annotationService';
 import { NewAnnotation } from '../../src/types/types';
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 
+const mockQuery = vi.fn();
 // Mock the database pool
 vi.mock('../../src/db/postgres', () => ({
-  pool: {
-    query: vi.fn(),
-  }
+  getPool: () => ({
+    query: mockQuery,
+  })
 }));
 
 // Mock UUID generation
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-annotation-id')
 }));
-
-const mockQuery = vi.mocked(pool.query) as any;
 
 describe('AnnotationService', () => {
   beforeEach(() => {
@@ -207,7 +206,7 @@ describe('AnnotationService', () => {
     it('should throw error when no fields provided to update', async () => {
       await expect(updateAnnotationById('annotation-1', {}))
         .rejects
-        .toThrow('Database error while updating annotation with id annotation-1');
+        .toThrow('No fields provided to update');
 
       expect(mockQuery).not.toHaveBeenCalled();
     });
