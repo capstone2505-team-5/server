@@ -7,8 +7,6 @@ import type {
   AllRootSpansResult, 
   BatchSummary, 
   BatchDetail, 
-  NewBatch, 
-  UpdateBatch 
 } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
@@ -20,7 +18,10 @@ import { getOpenAIClient } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
-
+import type {
+  CreateBatchBodyInput,
+  UpdateBatchBodyInput,
+} from '../schemas/batchSchemas';
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
 export const getBatchSummariesByProject = async (
@@ -106,12 +107,12 @@ export const getBatchSummariesByProject = async (
 
 
 export const createNewBatch = async (
-  batch: NewBatch
+  createBatchBody: CreateBatchBodyInput
 ): Promise<BatchDetail> => {
   const pool = await getPool();
   try {
     const id = uuidv4();
-    const { name, rootSpanIds, projectId } = batch;
+    const { name, rootSpanIds, projectId } = createBatchBody;
 
     // Validate batch size limit
     if (rootSpanIds.length > 150) {
@@ -199,7 +200,7 @@ export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary
  */
 export const updateBatchById = async (
   batchId: string,
-  batchUpdate: UpdateBatch
+  batchUpdate: UpdateBatchBodyInput
 ): Promise<BatchDetail> => {
   const pool = await getPool();
   try {

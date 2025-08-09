@@ -184,14 +184,6 @@ export interface BatchDetail {
   rootSpanIds: string[];
 }
 
-export interface NewBatch {
-  name: string;
-  projectId: string;
-  rootSpanIds: string[];
-}
-
-export type UpdateBatch = Omit<NewBatch, 'projectId'>;
-
 export interface AllRootSpansResult {
   rootSpans: AnnotatedRootSpan[];
   totalCount: number;
