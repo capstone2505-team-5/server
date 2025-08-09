@@ -1,3 +1,4 @@
+import { GetBatchesByProjectSchema } from '../schemas/batchSchemas';
 import { Request, Response } from 'express';
 import {
   getBatchSummariesByProject,
@@ -15,12 +16,14 @@ import { MAX_SPANS_PER_BATCH } from '../constants/index';
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
-    const projectId = req.params.id;
+    const validationResult = GetBatchesByProjectSchema.safeParse(req);
 
-    if (!projectId) {
-      res.status(400).json({ error: 'projectId parameter is required' });
+    if (!validationResult.success) {
+      res.status(400).json({ error: 'Invalid projectId parameter' });
       return;
     }
+
+    const { id: projectId } = validationResult.data.params;
 
     const batches = await getBatchSummariesByProject(projectId);
     res.status(200).json(batches);
