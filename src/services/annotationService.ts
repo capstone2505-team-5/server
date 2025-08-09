@@ -1,5 +1,9 @@
-import type { Annotation, NewAnnotation, Rating } from '../types/types';
-import { pool } from '../db/postgres';
+import type { Annotation, Rating } from '../types/types';
+import {
+  CreateAnnotationBodyInput,
+  UpdateAnnotationBodyInput,
+} from '../schemas/annotationSchemas';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 
 
@@ -11,6 +15,7 @@ export class AnnotationNotFoundError extends Error {
 }
 
 export const getAllAnnotations = async (): Promise<Annotation[]> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT 
@@ -47,6 +52,7 @@ export const getAllAnnotations = async (): Promise<Annotation[]> => {
 };
 
 export const getAnnotationsByBatch = async (batchId: string): Promise<Annotation[]> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT 
@@ -86,6 +92,7 @@ export const getAnnotationsByBatch = async (batchId: string): Promise<Annotation
 };
 
 export const getAnnotationById = async (id: string): Promise<Annotation> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT 
@@ -134,8 +141,11 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 };
 
 
-export const createNewAnnotation = async (annotation: NewAnnotation): Promise<Annotation> => {
-  const { rootSpanId, note, rating } = annotation;
+export const createNewAnnotation = async (
+  annotation: CreateAnnotationBodyInput
+): Promise<Annotation> => {
+  const pool = await getPool();
+  const { rootSpanId, note = '', rating } = annotation; // Provide default for note
   const id = uuidv4();
 
   try {
@@ -145,18 +155,12 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
       RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query
-    <
-      { 
-        id: string; 
-        root_span_id: string; 
-        note: string; 
-        rating: Rating 
-      }
-    >(
-      query,
-      [id, rootSpanId, note, rating]
-    );
+    const result = await pool.query<{
+      id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+    }>(query, [id, rootSpanId, note, rating]);
 
     const row = result.rows[0];
 
@@ -171,29 +175,34 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
     console.error(`Error creating annotation:`, error);
     throw new Error('Database error while creating annotation');
   }
-}
+};
 
-export const updateAnnotationById = async (id: string, updates: Partial<Annotation>) => {
+export const updateAnnotationById = async (
+  id: string,
+  updates: UpdateAnnotationBodyInput
+): Promise<Annotation> => {
+  const fields: string[] = [];
+  const values: (string | Rating)[] = [];
+  let paramIndex = 1;
+
+  if (updates.note !== undefined) {
+    fields.push(`note = $${paramIndex++}`);
+    values.push(updates.note);
+  }
+
+  if (updates.rating !== undefined) {
+    fields.push(`rating = $${paramIndex++}`);
+    values.push(updates.rating);
+  }
+
+  // Perform input validation before the try...catch block
+  if (fields.length === 0) {
+    throw new Error('No fields provided to update');
+  }
+
+  const pool = await getPool();
   try {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
-
-    if (updates.note !== undefined) {
-      fields.push(`note = $${paramIndex++}`);
-      values.push(updates.note);
-    }
-
-    if (updates.rating !== undefined) {
-      fields.push(`rating = $${paramIndex++}`);
-      values.push(updates.rating);
-    }
-
-    if (fields.length === 0) {
-      throw new Error('No fields provided to update');
-    }
-
-    values.push(id); // for the WHERE clause
+    values.push(id); // For the WHERE clause
 
     const query = `
       UPDATE annotations
@@ -202,36 +211,36 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
       RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; root_span_id: string; note: string; rating: Rating }>(
-      query,
-      values
-    );
+    const result = await pool.query<{
+      id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+    }>(query, values);
 
     if (result.rows.length === 0) {
       throw new AnnotationNotFoundError(id);
     }
 
     const row = result.rows[0];
-
     return {
       id: row.id,
       rootSpanId: row.root_span_id,
       note: row.note,
       rating: row.rating,
-      categories: [] // You can customize this if you're supporting categories
+      categories: [], // Categories are not updated here
     };
   } catch (error) {
     console.error(`Error updating annotation with id ${id}:`, error);
-
     if (error instanceof AnnotationNotFoundError) {
       throw error;
     }
-
     throw new Error(`Database error while updating annotation with id ${id}`);
   }
-}
+};
 
 export const deleteAnnotationById = async (id: string): Promise<Annotation | void> => {
+  const pool = await getPool();
   try {
     const query = `
       DELETE FROM annotations
@@ -265,6 +274,7 @@ export const deleteAnnotationById = async (id: string): Promise<Annotation | voi
 }
 
 export const clearCategoriesFromAnnotations = async (annotationIds: string[]) => {
+  const pool = await getPool();
   try {
     // First, find all categories currently assigned to these annotations
     const findCategoriesQuery = `
@@ -299,6 +309,7 @@ export const clearCategoriesFromAnnotations = async (annotationIds: string[]) =>
 };
 
 export const removeAnnotationFromSpans = async (rootSpans: string[]) => {
+  const pool = await getPool();
   try {
     if (rootSpans.length < 1) {
       throw new Error("No root spans provided to remove annotations")

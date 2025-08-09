@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-export const getPhoenixDashboardUrl = async (req: Request, res: Response) => {
+export const getPhoenixDashboardUrl = async (_req: Request, res: Response) => {
     try {
         res.json(process.env.PHOENIX_API_URL);
     } catch (error) {

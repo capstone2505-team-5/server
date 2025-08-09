@@ -191,7 +191,7 @@ Creates a new annotation for a root span.
 **Request Body:**
 ```typescript
 {
-  rootSpanId: "span_xyz789",
+  rootSpanId: "021aace02bb83a70",
   note: "This response was very helpful and accurate",
   rating: "good"
 }
@@ -320,6 +320,27 @@ GET /api/batches/batch_ghi012?projectId=proj_abc123&pageNumber=1&numPerPage=10
     }
   ],
   totalCount: 45
+}
+```
+
+### `GET /api/batches/:batchId/status`
+
+Checks if a batch has been formatted. Useful for polling after creating a batch to know when it's ready for viewing.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID |
+
+**Example Request:**
+```
+GET /api/batches/batch_ghi012/status
+```
+
+**Response:**
+```typescript
+{
+  "isFormatted": true
 }
 ```
 
@@ -588,7 +609,11 @@ GET /api/projects/proj_abc123
     validRootSpanCount: 45,
     percentAnnotated: 78.5,
     percentGood: 82.3,
-    categories: ["helpful", "accurate", "polite"]
+    categories: {
+                  "bad spelling": 5,
+                  "too long": 3,
+                },
+    formattedAt: "2025-01-03T14:20:00.000Z",
   },
   {
     id: "batch_jkl345",
@@ -597,7 +622,11 @@ GET /api/projects/proj_abc123
     validRootSpanCount: 67,
     percentAnnotated: 65.2,
     percentGood: 91.7,
-    categories: ["accurate", "informative"]
+    categories: {
+                  "bad spelling": 4,
+                  "too short": 2,
+                },
+    formattedAt: "2025-01-03T14:20:00.000Z",
   }
 ]
 ```

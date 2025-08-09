@@ -17,9 +17,10 @@ import {
     updateBatch, 
     deleteBatch,
     formatBatchByLLM, 
+    getBatchStatus,
 } from "../controllers/batchController";
 import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
-import { connectToBatchEvents } from "../controllers/sseController";
+
 
 const router = Router();
 
@@ -76,6 +77,8 @@ router.get('/batches/edit', getEditBatchSpans);
 // Get batch summary and root spans in batch
 router.get('/batches/:id', getBatch);
 
+router.get('/batches/:batchId/status', getBatchStatus);
+
 // Create a new batch
 router.post('/batches', createBatch);
 
@@ -99,9 +102,6 @@ router.post('/batches/:batchId/format', formatBatchByLLM);
 // Get the Phoenix dashboard/API URL
 router.get('/phoenixDashboardUrl', getPhoenixDashboardUrl);
 
-// SSE ROUTES
 
-// SSE connection for batch formatting updates  
-router.get('/batches/:id/events', connectToBatchEvents);
 
 export default router
