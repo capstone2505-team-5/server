@@ -172,6 +172,7 @@ export interface BatchSummary {
   percentAnnotated: number | null;
   percentGood: number | null;
   categories: Record<string, number>;
+  formattedAt: string | null;
 }
 
 export interface BatchDetail {

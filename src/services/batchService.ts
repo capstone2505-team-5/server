@@ -1,5 +1,6 @@
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import type { 
   FormattedSpanSet,
   SpanSet, 
@@ -13,18 +14,21 @@ import { BatchNotFoundError } from '../errors/errors';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
 import { 
   fetchRootSpans, 
-  insertFormattedSpanSets 
+  insertFormattedSpanSets, 
+  fetchFormattedRootSpans, 
+  nullifyBatchId 
 } from './rootSpanService';
-import { openai } from '../lib/openaiClient';
+import { getOpenAIClient } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
-import { sendSSEUpdate, closeSSEConnection } from './sseService';
+
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
 export const getBatchSummariesByProject = async (
   projectId: string
 ): Promise<BatchSummary[]> => {
+  const pool = await getPool();
   try {
     // First, get the basic batch info with stats
     const batchQuery = `
@@ -33,6 +37,7 @@ export const getBatchSummariesByProject = async (
         b.project_id,
         b.name,
         b.created_at,
+        b.formatted_at,
         COUNT(DISTINCT rs.id) AS valid_root_span_count,
         COUNT(DISTINCT a.id)::float 
           / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
@@ -92,7 +97,8 @@ export const getBatchSummariesByProject = async (
         row.percent_good !== null
           ? parseFloat(row.percent_good.toFixed(2))
           : null,
-      categories: categoryMap.get(row.id) || {}
+      categories: categoryMap.get(row.id) || {},
+      formattedAt: row.formatted_at ? row.formatted_at.toISOString() : null,
     }));
   } catch (error) {
     console.error('Error fetching batch summaries:', error);
@@ -104,6 +110,7 @@ export const getBatchSummariesByProject = async (
 export const createNewBatch = async (
   batch: NewBatch
 ): Promise<BatchDetail> => {
+  const pool = await getPool();
   try {
     const id = uuidv4();
     const { name, rootSpanIds, projectId } = batch;
@@ -145,8 +152,45 @@ export const createNewBatch = async (
       );
     }
 
-    console.log(`Attempting to async format batch ${id}`);
-    formatBatch(id);
+    // console.log(`Attempting to async format batch ${id}`);
+    // formatBatch(id);
+    const isLocal = process.env.AWS_SAM_LOCAL === 'true';
+
+    if (isLocal) {
+      console.log(`Invoking FormatBatchFunction locally for batch ${id}`);
+      const lambda = new LambdaClient({
+        endpoint: 'http://host.docker.internal:3001',
+        region: 'us-east-1',
+        credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      });
+      const command = new InvokeCommand({
+        FunctionName: 'FormatBatchFunction',
+        InvocationType: 'RequestResponse', // Required for local
+        Payload: JSON.stringify({ batchId: id }),
+      });
+
+      // Fire-and-forget: don't await the promise
+      lambda.send(command)
+        .then(result => {
+          console.log(`Local FormatBatchFunction invocation successful for batch ${id}:`, result);
+        })
+        .catch(err => {
+          console.error(`Local FormatBatchFunction invocation failed for batch ${id}:`, err);
+        });
+
+      console.log(`FormatBatchFunction for batch ${id} is running in the background.`);
+
+    } else {
+      // Production: Use 'Event' for true async
+      const lambda = new LambdaClient({});
+      const command = new InvokeCommand({
+        FunctionName: 'FormatBatchFunction',
+        InvocationType: 'Event',
+        Payload: JSON.stringify({ batchId: id }),
+      });
+      await lambda.send(command);
+      console.log(`Successfully invoked FormatBatchFunction for batch ${id}`);
+    }
 
     return { id, projectId, name, rootSpanIds };
   } catch (e) {
@@ -156,6 +200,7 @@ export const createNewBatch = async (
 };
 
 export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary> => {
+  const pool = await getPool();
   try {
   const query = `
       SELECT 
@@ -196,6 +241,7 @@ export const updateBatchById = async (
   batchId: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
+  const pool = await getPool();
   try {
     const { 
       name: newName, 
@@ -261,6 +307,7 @@ export const updateBatchById = async (
 };
 
 export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
+  const pool = await getPool();
   try {
     // fetch spans before deletion
     const spansResult = await pool.query<{ id: string }>(
@@ -302,57 +349,21 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
-    sendSSEUpdate(batchId, { 
-      status: 'started', 
-      message: 'Batch formatting started',
-      progress: 0,
-      timestamp: new Date().toISOString()
-    });
-
     console.log(`Starting to format batch ${batchId}`);
     const spanSets = await getSpanSetsFromBatch(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
 
-    sendSSEUpdate(batchId, { 
-      status: 'processing', 
-      message: `Processing ${spanSets.length} spans with AI`,
-      progress: 25 
-    });
-
     const formattedSpanSets = await formatAllSpanSets(spanSets);
     console.log(`${formattedSpanSets.length} span sets formatted`);
-
-    sendSSEUpdate(batchId, { 
-      status: 'saving', 
-      message: 'Saving formatted data to database',
-      progress: 75 
-    });
 
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
     console.log(`${updateDbResult.updated} root spans formatted in DB`);
     await markBatchFormatted(batchId);
 
-    sendSSEUpdate(batchId, { 
-      status: 'completed', 
-      message: `Successfully formatted ${updateDbResult.updated} spans`,
-      progress: 100,
-      timestamp: new Date().toISOString()
-    });
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
   } catch (e) {
     console.error("batch formatting error");
     
     const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
-
-    sendSSEUpdate(batchId, { 
-      status: 'failed', 
-      message: 'Batch formatting failed',
-      error: errorMessage,
-      timestamp: new Date().toISOString()
-    })
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
 
     throw new Error("Error formatting batch");
   }
@@ -508,6 +519,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 
   let raw: string;
   try {
+    const openai = await getOpenAIClient();
     const completion = await openai.chat.completions.create(
       {
         model: 'gpt-4o',
@@ -538,6 +550,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 };
 
 const markBatchFormatted = async (batchId: string) => {
+  const pool = await getPool();
   try {
     const query = `
       UPDATE batches
@@ -555,6 +568,30 @@ const markBatchFormatted = async (batchId: string) => {
     }
   } catch (e) {
     console.error("Error marking batch as formatted");
+    throw e;
+  }
+}
+
+export const isFormatted = async (batchId: string): Promise<boolean> => {
+  const pool = await getPool();
+
+  try {
+    const query = `
+      SELECT formatted_at
+      FROM batches
+      WHERE id = $1
+    `
+
+    const result = await pool.query(query, [batchId]);
+
+    if (result.rowCount === 0) {
+      throw new Error(`Batch ${batchId} not found`);
+    }
+
+    return !!result.rows[0].formatted_at;
+
+  } catch(e) {
+    console.error("failed to check if batch is formatted in database");
     throw e;
   }
 }

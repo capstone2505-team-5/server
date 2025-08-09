@@ -1,0 +1,12 @@
+{
+  "httpMethod": "GET",
+  "path": "/api/projects",
+  "queryStringParameters": {},
+  "headers": {},
+  "requestContext": {
+    "elb": {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/lambda-group/abcdef1234567890"
+    }
+  }
+}
+

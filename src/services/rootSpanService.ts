@@ -1,12 +1,12 @@
 import { error } from "console";
-import { pool } from "../db/postgres";
+import { getPool } from "../db/postgres";
 import { DEFAULT_PAGE_QUANTITY, FIRST_PAGE, MAX_SPANS_PER_PAGE } from "../constants/index";
 import type { 
   RootSpanQueryParams, 
   FormattedSpanSet, 
   FormattedRootSpan, 
   AnnotatedRootSpan, 
-  Rating, 
+  RawRootSpanRow,
   AllRootSpansResult ,
   FormattedRootSpansResult,
 } from '../types/types';
@@ -29,6 +29,7 @@ export const fetchRootSpans = async ({
   startDate,
   endDate,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
+  const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
 
@@ -79,19 +80,20 @@ export const fetchRootSpans = async ({
       
       switch (dateFilter) {
         case '12h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '12 hours'`;
           break;
         case '24h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours'`;
           break;
         case '1w':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 week'`;
           break;
         case 'custom':
           if (startDate && endDate) {
             params.push(startDate, endDate);
-            // Use DATE() to compare just the date part, and make end date inclusive of full day
-            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+            // The frontend is responsible for converting the user's local date
+            // range into a UTC start and end time.
+            dateCondition = `r.start_time >= $${params.length - 1} AND r.start_time <= $${params.length}`;
           }
           break;
       }
@@ -179,6 +181,7 @@ export const fetchRootSpans = async ({
 };
 
 export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT 
@@ -254,6 +257,7 @@ export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> =>
 };
 
 export const rootSpanExists = async (spanId: string): Promise<boolean> => {
+  const pool = await getPool();
   try {
     const result = await pool.query(
       `
@@ -273,6 +277,7 @@ export const rootSpanExists = async (spanId: string): Promise<boolean> => {
 }
 
 export const nullifyBatchId = async (spanId: string, batchId: string): Promise<boolean> => {
+  const pool = await getPool();
   try {
   const query = `
       UPDATE root_spans
@@ -299,6 +304,7 @@ export const fetchEditBatchSpans = async ({
   startDate,
   endDate,
 }: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+  const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
   const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
   
@@ -348,19 +354,20 @@ export const fetchEditBatchSpans = async ({
       
       switch (dateFilter) {
         case '12h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '12 hours'`;
           break;
         case '24h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours'`;
           break;
         case '1w':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 week'`;
           break;
         case 'custom':
           if (startDate && endDate) {
             params.push(startDate, endDate);
-            // Use DATE() to compare just the date part, and make end date inclusive of full day
-            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+            // The frontend is responsible for converting the user's local date
+            // range into a UTC start and end time.
+            dateCondition = `r.start_time >= $${params.length - 1} AND r.start_time <= $${params.length}`;
           }
           break;
       }
@@ -448,6 +455,7 @@ export const fetchEditBatchSpans = async ({
 };
 
 export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSet[]): Promise<{updated: number}> => {
+  const pool = await getPool();
   try {
     // Build the VALUES clause with placeholders
     const valuesClauses: string[] = [];
@@ -481,6 +489,7 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
 };
 
 const getProjectIdFromBatch = async (batchId: string): Promise<string> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT project_id 
@@ -507,6 +516,7 @@ export const fetchFormattedRootSpans = async ({
   pageNumber,
   numberPerPage,
 }: RootSpanQueryParams): Promise<FormattedRootSpansResult> => {
+  const pool = await getPool();
   try {
     const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
     const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
@@ -623,6 +633,7 @@ export const fetchFormattedRootSpans = async ({
 };
 
 export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]> => {
+  const pool = await getPool();
   try {
     const query = `
       SELECT DISTINCT span_name 
@@ -644,6 +655,7 @@ export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]>
 export const fetchRandomSpans = async ({
   projectId,
 }: { projectId: string }): Promise<AllRootSpansResult> => {
+  const pool = await getPool();
   try {
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];

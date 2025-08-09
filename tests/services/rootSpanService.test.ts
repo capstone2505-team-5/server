@@ -6,18 +6,15 @@ import {
   RootSpanNotFoundError 
 } from '../../src/services/rootSpanService';
 import { RawRootSpanRow, RootSpanQueryParams } from '../../src/types/types'; // Import the type
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 
+const mockQuery = vi.fn();
 // any code from this path, use my fake version instead
 vi.mock('../../src/db/postgres', () => ({
-    pool: {
-      query: vi.fn(),
-    }
+    getPool: () => ({
+      query: mockQuery,
+    })
 }));
-
-// for type safety
-const mockPool = vi.mocked(pool);
-const mockQuery = mockPool.query as any;
 
 describe('fetchRootSpans', () => {
   beforeEach(() => {

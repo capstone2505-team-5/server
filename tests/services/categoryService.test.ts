@@ -1,20 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addCategories } from '../../src/services/categoryService';
-import { pool } from '../../src/db/postgres';
+import { getPool } from '../../src/db/postgres';
 
+const mockQuery = vi.fn();
 // Mock the database pool
 vi.mock('../../src/db/postgres', () => ({
-  pool: {
-    query: vi.fn(),
-  }
+  getPool: () => ({
+    query: mockQuery,
+  })
 }));
 
 // Mock UUID generation
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-category-id')
 }));
-
-const mockQuery = vi.mocked(pool.query) as any;
 
 describe('CategoryService', () => {
   beforeEach(() => {
