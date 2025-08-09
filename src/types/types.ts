@@ -56,6 +56,7 @@ export type RawRootSpanRow = {
   created_at: string;
   formatted_input?: string;
   formatted_output?: string;
+  formatted_at: string | null;
   annotation_id: string | null;
   note: string | null;
   rating: Rating | null;
@@ -83,8 +84,9 @@ export interface AnnotatedRootSpan {
   projectId: string;
   spanName: string;
   startTime: string;
-  endTime: string;        // or Date
+  endTime: string;        
   createdAt: string;
+  formattedAt?: string | null;
   annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 

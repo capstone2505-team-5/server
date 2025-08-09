@@ -120,6 +120,7 @@ export const fetchRootSpans = async ({
         r.start_time,
         r.end_time,
         r.created_at,
+        r.formatted_at,
         a.id AS annotation_id,
         a.note,
         a.rating,
@@ -132,7 +133,7 @@ export const fetchRootSpans = async ({
       GROUP BY 
         r.id, r.trace_id, r.batch_id, r.input, r.output, 
         r.project_id, r.span_name, r.start_time, 
-        r.end_time, r.created_at,
+        r.end_time, r.created_at, r.formatted_at,
         a.id, a.note, a.rating
       ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
@@ -160,6 +161,7 @@ export const fetchRootSpans = async ({
       startTime: row.start_time,
       endTime: row.end_time,
       createdAt: row.created_at,
+      formattedAt: row.formatted_at,
       annotation: row.annotation_id
         ? {
             id: row.annotation_id,
