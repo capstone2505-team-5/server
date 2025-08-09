@@ -345,7 +345,7 @@ const getSpanSetsFromBatch = async (batchId: string): Promise<SpanSet[]> => {
         projectId: undefined,
         spanName: undefined,
         pageNumber: String(1),
-        numberPerPage: String(MAX_SPANS_PER_BATCH),
+        numPerPage: String(MAX_SPANS_PER_BATCH),
       }
     );
     return extractSpanSets(rootSpans);

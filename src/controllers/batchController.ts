@@ -73,7 +73,6 @@ export const getBatch = async (req: Request, res: Response) => {
 
     const { rootSpans, totalCount } = await fetchFormattedRootSpans({
       batchId,
-      projectId: undefined,
       spanName,
       pageNumber,
       numberPerPage,
