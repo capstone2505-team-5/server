@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { 
+import {
   getAllAnnotations,
   getAnnotationById,
   createNewAnnotation,
@@ -7,7 +7,7 @@ import {
   deleteAnnotationById,
   AnnotationNotFoundError
 } from '../../src/services/annotationService';
-import { NewAnnotation } from '../../src/types/types';
+import type { CreateAnnotationBodyInput } from '../../src/schemas/annotationSchemas';
 import { getPool } from '../../src/db/postgres';
 
 const mockQuery = vi.fn();
@@ -125,10 +125,10 @@ describe('AnnotationService', () => {
 
   describe('createNewAnnotation', () => {
     it('should create a new annotation', async () => {
-      const newAnnotation: NewAnnotation = {
+      const newAnnotation: CreateAnnotationBodyInput = {
         rootSpanId: 'span-1',
         note: 'New test annotation',
-        rating: 'good'
+        rating: 'good',
       };
 
       const mockReturnRow = {
@@ -157,13 +157,15 @@ describe('AnnotationService', () => {
     });
 
     it('should handle database errors during creation', async () => {
-      const newAnnotation: NewAnnotation = {
+      const newAnnotation: CreateAnnotationBodyInput = {
         rootSpanId: 'span-1',
         note: 'Test annotation',
-        rating: 'good'
+        rating: 'good',
       };
 
-      mockQuery.mockRejectedValueOnce(new Error('Foreign key constraint failed'));
+      mockQuery.mockRejectedValueOnce(
+        new Error('Foreign key constraint failed')
+      );
 
       await expect(createNewAnnotation(newAnnotation))
         .rejects
@@ -175,7 +177,7 @@ describe('AnnotationService', () => {
     it('should update annotation with provided fields', async () => {
       const updates = {
         note: 'Updated note',
-        rating: 'bad' as const
+        rating: 'bad' as const,
       };
 
       const mockReturnRow = {
@@ -204,21 +206,21 @@ describe('AnnotationService', () => {
     });
 
     it('should throw error when no fields provided to update', async () => {
-      await expect(updateAnnotationById('annotation-1', {}))
-        .rejects
-        .toThrow('No fields provided to update');
+      await expect(updateAnnotationById('annotation-1', {})).rejects.toThrow(
+        'No fields provided to update'
+      );
 
       expect(mockQuery).not.toHaveBeenCalled();
     });
 
     it('should throw AnnotationNotFoundError when annotation does not exist', async () => {
-      const updates = { note: 'Updated note' };
+      const updates = { note: 'Updated note', rating: 'good' as const };
 
       mockQuery.mockResolvedValueOnce({ rows: [] });
 
-      await expect(updateAnnotationById('nonexistent-annotation', updates))
-        .rejects
-        .toThrow(AnnotationNotFoundError);
+      await expect(
+        updateAnnotationById('nonexistent-annotation', updates)
+      ).rejects.toThrow(AnnotationNotFoundError);
     });
   });
 
@@ -231,9 +233,9 @@ describe('AnnotationService', () => {
         rating: 'good'
       };
 
-      mockQuery.mockResolvedValueOnce({ 
+      mockQuery.mockResolvedValueOnce({
         rows: [mockReturnRow],
-        rowCount: 1 
+        rowCount: 1
       });
 
       const result = await deleteAnnotationById('annotation-1');
@@ -253,9 +255,9 @@ describe('AnnotationService', () => {
     });
 
     it('should throw AnnotationNotFoundError when annotation does not exist', async () => {
-      mockQuery.mockResolvedValueOnce({ 
+      mockQuery.mockResolvedValueOnce({
         rows: [],
-        rowCount: 0 
+        rowCount: 0
       });
 
       await expect(deleteAnnotationById('nonexistent-annotation'))

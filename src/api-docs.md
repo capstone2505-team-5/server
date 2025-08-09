@@ -191,7 +191,7 @@ Creates a new annotation for a root span.
 **Request Body:**
 ```typescript
 {
-  rootSpanId: "span_xyz789",
+  rootSpanId: "021aace02bb83a70",
   note: "This response was very helpful and accurate",
   rating: "good"
 }
