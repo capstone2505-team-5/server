@@ -31,9 +31,7 @@ module.exports = {
   },
   plugins: [
     new CopyPlugin({
-      patterns: [
-        { from: '.env', to: '.' },
-      ],
+      patterns: [{ from: '.env', to: '.' }],
     }),
   ],
 };

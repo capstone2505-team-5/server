@@ -15,8 +15,6 @@ import { MAX_SPANS_PER_BATCH } from '../constants/index';
 import { 
   fetchRootSpans, 
   insertFormattedSpanSets, 
-  fetchFormattedRootSpans, 
-  nullifyBatchId 
 } from './rootSpanService';
 import { getOpenAIClient } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
@@ -255,6 +253,8 @@ export const updateBatchById = async (
           `, [batchId, newRootSpanIds]
       );
     }
+
+    await invokeFormatLambda(batchId);
 
     return { 
       id: batchId, 
@@ -566,42 +566,47 @@ export const isFormatted = async (batchId: string): Promise<boolean> => {
 }
 
 export const invokeFormatLambda = async (id: string) => {
-  console.log(`Attempting to async format batch ${id}`);
-  const isLocal = process.env.AWS_SAM_LOCAL === 'true';
+  try {
+    console.log(`Attempting to async format batch ${id}`);
+    const isLocal = process.env.AWS_SAM_LOCAL === 'true';
 
-  if (isLocal) {
-    console.log(`Invoking FormatBatchFunction locally for batch ${id}`);
-    const lambda = new LambdaClient({
-      endpoint: 'http://host.docker.internal:3001',
-      region: 'us-east-1',
-      credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
-    });
-    const command = new InvokeCommand({
-      FunctionName: 'FormatBatchFunction',
-      InvocationType: 'RequestResponse', // Required for local
-      Payload: JSON.stringify({ batchId: id }),
-    });
-
-    // Fire-and-forget: don't await the promise
-    lambda.send(command)
-      .then(result => {
-        console.log(`Local FormatBatchFunction invocation successful for batch ${id}:`, result);
-      })
-      .catch(err => {
-        console.error(`Local FormatBatchFunction invocation failed for batch ${id}:`, err);
+    if (isLocal) {
+      console.log(`Invoking FormatBatchFunction locally for batch ${id}`);
+      const lambda = new LambdaClient({
+        endpoint: 'http://host.docker.internal:3001',
+        region: 'us-east-1',
+        credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+      });
+      const command = new InvokeCommand({
+        FunctionName: 'FormatBatchFunction',
+        InvocationType: 'RequestResponse', // Required for local
+        Payload: JSON.stringify({ batchId: id }),
       });
 
-    console.log(`FormatBatchFunction for batch ${id} is running in the background.`);
+      // Fire-and-forget: don't await the promise
+      lambda.send(command)
+        .then(result => {
+          console.log(`Local FormatBatchFunction invocation successful for batch ${id}:`, result);
+        })
+        .catch(err => {
+          console.error(`Local FormatBatchFunction invocation failed for batch ${id}:`, err);
+        });
 
-  } else {
-    // Production: Use 'Event' for true async
-    const lambda = new LambdaClient({});
-    const command = new InvokeCommand({
-      FunctionName: 'FormatBatchFunction',
-      InvocationType: 'Event',
-      Payload: JSON.stringify({ batchId: id }),
-    });
-    await lambda.send(command);
-    console.log(`Successfully invoked FormatBatchFunction for batch ${id}`);
+      console.log(`FormatBatchFunction for batch ${id} is running in the background.`);
+
+    } else {
+      // Production: Use 'Event' for true async
+      const lambda = new LambdaClient({});
+      const command = new InvokeCommand({
+        FunctionName: 'FormatBatchFunction',
+        InvocationType: 'Event',
+        Payload: JSON.stringify({ batchId: id }),
+      });
+      await lambda.send(command);
+      console.log(`Successfully invoked FormatBatchFunction for batch ${id}`);
+    }
+  } catch (e) {
+    console.error("Error invoking format lambda");
+    throw e;
   }
 } 

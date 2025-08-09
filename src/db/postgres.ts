@@ -73,7 +73,7 @@ const getDbConfig = async () => {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       // Lambda-specific pool settings
-      max: 1, // Only allow 1 connection in the pool for a single Lambda container
+      max: 10, // It was freezing with 1 locally so tryign 10 - dev only
       idleTimeoutMillis: 10000, // Close idle clients after 10 seconds
       connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
     };
