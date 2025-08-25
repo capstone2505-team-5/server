@@ -339,12 +339,14 @@ export const fetchEditBatchSpans = async ({
 
     const whereClauses: string[] = [];
     const params: (string | number)[] = [];
+    let batchParamIndex: number | null = null; // remember the $ index of batchId for ORDER BY
 
     if (batchId === undefined) {
       throw new Error("batchId required");
     } else {
       params.push(batchId);
-      whereClauses.push(`r.batch_id = $${params.length} OR r.batch_id IS NULL`);
+      batchParamIndex = params.length; // positional index of batchId in `params`
+      whereClauses.push(`r.batch_id = $${batchParamIndex} OR r.batch_id IS NULL`);
     }
 
     const projectId = await getProjectIdFromBatch(batchId);
@@ -401,6 +403,13 @@ export const fetchEditBatchSpans = async ({
     const offset = (pageNum - 1) * pageSize;
     params.push(pageSize, offset);
 
+    // Order rows so that rows with this batchId come first, then batchless rows,
+    // while keeping the secondary ordering by created_at DESC (and id ASC for tie-breaks).
+    // We reference the same $ parameter position captured in `batchParamIndex`.
+    const orderBy = batchParamIndex
+      ? `ORDER BY CASE WHEN r.batch_id = $${batchParamIndex} THEN 0 ELSE 1 END, r.created_at DESC, r.id ASC`
+      : `ORDER BY r.created_at DESC, r.id ASC`;
+
     const query = `
       SELECT 
         r.id AS root_span_id,
@@ -427,7 +436,7 @@ export const fetchEditBatchSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC, r.id ASC
+      ${orderBy}
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;

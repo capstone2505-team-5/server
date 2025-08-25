@@ -23,7 +23,7 @@ const getOpenAIApiKeyFromSecrets = async () => {
     }
 
     const secret = JSON.parse(response.SecretString);
-    return secret.apiKey || secret.openai_api_key || secret.OPENAI_API_KEY;
+    return secret["openaiApiKey"];
   } catch (error) {
     console.error('Error fetching OpenAI API key from Secrets Manager:', error);
     throw error;
