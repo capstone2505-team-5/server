@@ -323,6 +323,27 @@ GET /api/batches/batch_ghi012?projectId=proj_abc123&pageNumber=1&numPerPage=10
 }
 ```
 
+### `GET /api/batches/:batchId/status`
+
+Checks if a batch has been formatted. Useful for polling after creating a batch to know when it's ready for viewing.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batchId` | string | Yes | Batch ID |
+
+**Example Request:**
+```
+GET /api/batches/batch_ghi012/status
+```
+
+**Response:**
+```typescript
+{
+  "isFormatted": true
+}
+```
+
 ### `GET /api/batches/edit`
 
 Retrieves root spans for batch editing - includes both unassigned spans and spans from the specified batch.

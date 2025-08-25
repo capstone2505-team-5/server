@@ -178,27 +178,28 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
 }
 
 export const updateAnnotationById = async (id: string, updates: Partial<Annotation>) => {
+  const fields: string[] = [];
+  const values: (string | Rating)[] = [];
+  let paramIndex = 1;
+
+  if (updates.note !== undefined) {
+    fields.push(`note = $${paramIndex++}`);
+    values.push(updates.note);
+  }
+
+  if (updates.rating !== undefined) {
+    fields.push(`rating = $${paramIndex++}`);
+    values.push(updates.rating);
+  }
+
+  // Perform input validation before the try...catch block
+  if (fields.length === 0) {
+    throw new Error('No fields provided to update');
+  }
+
   const pool = await getPool();
   try {
-    const fields = [];
-    const values = [];
-    let paramIndex = 1;
-
-    if (updates.note !== undefined) {
-      fields.push(`note = $${paramIndex++}`);
-      values.push(updates.note);
-    }
-
-    if (updates.rating !== undefined) {
-      fields.push(`rating = $${paramIndex++}`);
-      values.push(updates.rating);
-    }
-
-    if (fields.length === 0) {
-      throw new Error('No fields provided to update');
-    }
-
-    values.push(id); // for the WHERE clause
+    values.push(id); // For the WHERE clause
 
     const query = `
       UPDATE annotations
@@ -217,24 +218,21 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
     }
 
     const row = result.rows[0];
-
     return {
       id: row.id,
       rootSpanId: row.root_span_id,
       note: row.note,
       rating: row.rating,
-      categories: [] // You can customize this if you're supporting categories
+      categories: [], // Categories are not updated here
     };
   } catch (error) {
     console.error(`Error updating annotation with id ${id}:`, error);
-
     if (error instanceof AnnotationNotFoundError) {
       throw error;
     }
-
     throw new Error(`Database error while updating annotation with id ${id}`);
   }
-}
+};
 
 export const deleteAnnotationById = async (id: string): Promise<Annotation | void> => {
   const pool = await getPool();

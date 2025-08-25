@@ -80,19 +80,20 @@ export const fetchRootSpans = async ({
       
       switch (dateFilter) {
         case '12h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '12 hours'`;
           break;
         case '24h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours'`;
           break;
         case '1w':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 week'`;
           break;
         case 'custom':
           if (startDate && endDate) {
             params.push(startDate, endDate);
-            // Use DATE() to compare just the date part, and make end date inclusive of full day
-            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+            // The frontend is responsible for converting the user's local date
+            // range into a UTC start and end time.
+            dateCondition = `r.start_time >= $${params.length - 1} AND r.start_time <= $${params.length}`;
           }
           break;
       }
@@ -353,19 +354,20 @@ export const fetchEditBatchSpans = async ({
       
       switch (dateFilter) {
         case '12h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '12 hours'`;
           break;
         case '24h':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '24 hours'`;
           break;
         case '1w':
-          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          dateCondition = `r.start_time >= (NOW() AT TIME ZONE 'UTC') - INTERVAL '1 week'`;
           break;
         case 'custom':
           if (startDate && endDate) {
             params.push(startDate, endDate);
-            // Use DATE() to compare just the date part, and make end date inclusive of full day
-            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+            // The frontend is responsible for converting the user's local date
+            // range into a UTC start and end time.
+            dateCondition = `r.start_time >= $${params.length - 1} AND r.start_time <= $${params.length}`;
           }
           break;
       }

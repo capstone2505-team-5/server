@@ -17,6 +17,7 @@ import {
     updateBatch, 
     deleteBatch,
     formatBatchByLLM, 
+    getBatchStatus,
 } from "../controllers/batchController";
 import { getPhoenixDashboardUrl } from "../controllers/phoenixController";
 
@@ -75,6 +76,8 @@ router.get('/batches/edit', getEditBatchSpans);
 // Params-> /api/batches/:batchId?pageNumber=1&numPerPage=20
 // Get batch summary and root spans in batch
 router.get('/batches/:id', getBatch);
+
+router.get('/batches/:batchId/status', getBatchStatus);
 
 // Create a new batch
 router.post('/batches', createBatch);

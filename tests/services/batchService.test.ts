@@ -9,6 +9,7 @@ import {
 import { BatchNotFoundError } from '../../src/errors/errors';
 import { NewBatch, UpdateBatch } from '../../src/types/types';
 import { getPool } from '../../src/db/postgres';
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 
 const mockQuery = vi.fn();
 // Mock the database pool
@@ -56,6 +57,17 @@ vi.mock('../../src/utils/jsonCleanup', () => ({
   jsonCleanup: vi.fn().mockReturnValue('[]')
 }));
 
+// Mock the Lambda client
+const mockLambdaSend = vi.fn();
+vi.mock('@aws-sdk/client-lambda', () => {
+  return {
+    LambdaClient: vi.fn(() => ({
+      send: mockLambdaSend
+    })),
+    InvokeCommand: vi.fn(),
+  };
+});
+
 describe('BatchService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -69,24 +81,32 @@ describe('BatchService', () => {
           project_id: 'project-1',
           name: 'Test Batch 1',
           created_at: new Date('2024-01-01T00:00:00Z'),
+          formatted_at: null,
           valid_root_span_count: 5,
           percent_annotated: 80.0,
-          percent_good: 60.0,
-          categories: ['accuracy', 'performance']
+          percent_good: 60.0
         },
         {
           id: 'batch-2',
           project_id: 'project-1',
           name: 'Test Batch 2',
           created_at: new Date('2024-01-02T00:00:00Z'),
+          formatted_at: null,
           valid_root_span_count: 3,
           percent_annotated: null,
-          percent_good: null,
-          categories: []
+          percent_good: null
         }
       ];
 
-      mockQuery.mockResolvedValueOnce({ rows: mockBatchRows });
+      const mockCategoryRows = [
+        { batch_id: 'batch-1', category_text: 'accuracy', category_count: 10 },
+        { batch_id: 'batch-1', category_text: 'performance', category_count: 5 },
+      ];
+
+      // Mock the two consecutive queries
+      mockQuery
+        .mockResolvedValueOnce({ rows: mockBatchRows })
+        .mockResolvedValueOnce({ rows: mockCategoryRows });
 
       const result = await getBatchSummariesByProject('project-1');
 
@@ -99,7 +119,8 @@ describe('BatchService', () => {
           validRootSpanCount: 5,
           percentAnnotated: 80.0,
           percentGood: 60.0,
-          categories: ['accuracy', 'performance']
+          categories: { accuracy: 10, performance: 5 },
+          formattedAt: null,
         },
         {
           id: 'batch-2',
@@ -109,36 +130,35 @@ describe('BatchService', () => {
           validRootSpanCount: 3,
           percentAnnotated: null,
           percentGood: null,
-          categories: []
+          categories: {},
+          formattedAt: null,
         }
       ]);
 
-      expect(mockQuery).toHaveBeenCalledWith(
+      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery).toHaveBeenNthCalledWith(1,
         expect.stringContaining('FROM batches b'),
+        ['project-1']
+      );
+      expect(mockQuery).toHaveBeenNthCalledWith(2,
+        expect.stringContaining('FROM root_spans rs'),
         ['project-1']
       );
     });
   });
 
   describe('createNewBatch', () => {
-    it('should create a new batch successfully', async () => {
+    it('should create a new batch and invoke the formatting lambda', async () => {
       const newBatch: NewBatch = {
         name: 'New Test Batch',
         projectId: 'project-1',
         rootSpanIds: ['span-1', 'span-2']
       };
 
-      // Mock the conflict check query (no conflicts)
-      mockQuery.mockResolvedValueOnce({ rows: [] });
-      
-      // Mock the batch insertion
-      mockQuery.mockResolvedValueOnce({ rowCount: 1 });
-      
-      // Mock the root spans update
-      mockQuery.mockResolvedValueOnce({ rowCount: 2 });
-      
-      // Mock the markBatchFormatted query (called by formatBatch)
-      mockQuery.mockResolvedValue({ rowCount: 1 });
+      // Mock the conflict check, batch insertion, and root span update
+      mockQuery.mockResolvedValueOnce({ rows: [] }); // No conflicts
+      mockQuery.mockResolvedValueOnce({ rowCount: 1 }); // Insert batch
+      mockQuery.mockResolvedValueOnce({ rowCount: 2 }); // Update spans
 
       const result = await createNewBatch(newBatch);
 
@@ -149,14 +169,14 @@ describe('BatchService', () => {
         rootSpanIds: ['span-1', 'span-2']
       });
 
-      // Just verify that database calls were made (don't check exact count due to formatBatch complexity)
-      expect(mockQuery).toHaveBeenCalled();
+      // Verify DB calls
+      expect(mockQuery).toHaveBeenCalledTimes(3);
+      expect(mockQuery).toHaveBeenNthCalledWith(1, expect.stringContaining('SELECT id, batch_id'), [['span-1', 'span-2']]);
+      expect(mockQuery).toHaveBeenNthCalledWith(2, expect.stringContaining('INSERT INTO batches'), ['test-batch-id', 'project-1', 'New Test Batch']);
+      expect(mockQuery).toHaveBeenNthCalledWith(3, expect.stringContaining('UPDATE root_spans'), ['test-batch-id', ['span-1', 'span-2']]);
       
-      // Check that conflict validation was performed (first call should be the conflict check)
-      expect(mockQuery).toHaveBeenNthCalledWith(1,
-        expect.stringContaining('SELECT id, batch_id'),
-        [['span-1', 'span-2']]
-      );
+      // Verify Lambda invocation
+      expect(mockLambdaSend).toHaveBeenCalledTimes(1);
     });
   });
 
