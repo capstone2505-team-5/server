@@ -1,5 +1,6 @@
-import { pool } from '../db/postgres';
+import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
+import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import type { 
   FormattedSpanSet,
   SpanSet, 
@@ -19,12 +20,11 @@ import { openai } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
-import { sendSSEUpdate, closeSSEConnection } from './sseService';
+
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
-export const getBatchSummariesByProject = async (
-  projectId: string
-): Promise<BatchSummary[]> => {
+export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
+  const pool = getPool();
   try {
     // First, get the basic batch info with stats
     const batchQuery = `
@@ -33,6 +33,7 @@ export const getBatchSummariesByProject = async (
         b.project_id,
         b.name,
         b.created_at,
+        b.formatted_at,
         COUNT(DISTINCT rs.id) AS valid_root_span_count,
         COUNT(DISTINCT a.id)::float 
           / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
@@ -46,53 +47,28 @@ export const getBatchSummariesByProject = async (
       ORDER BY b.created_at DESC;
     `;
 
-    // Then get category counts for all batches in this project
-    const categoryQuery = `
-      SELECT 
-        rs.batch_id,
-        c.text AS category_text,
-        COUNT(*)::int AS category_count
-      FROM root_spans rs
-      JOIN annotations a ON a.root_span_id = rs.id
-      JOIN annotation_categories ac ON ac.annotation_id = a.id
-      JOIN categories c ON c.id = ac.category_id
-      JOIN batches b ON b.id = rs.batch_id
-      WHERE b.project_id = $1
-      GROUP BY rs.batch_id, c.text
-      ORDER BY rs.batch_id, c.text;
-    `;
+    const result = await pool.query<{
+      id: string;
+      project_id: string;
+      name: string;
+      created_at: Date;
+      formatted_at: Date | null;
+      valid_root_span_count: number;
+      percent_annotated: number | null;
+      percent_good: number | null;
+      categories: string[];
+    }>(query, [projectId]);
 
-    const [batchResult, categoryResult] = await Promise.all([
-      pool.query(batchQuery, [projectId]),
-      pool.query(categoryQuery, [projectId])
-    ]);
-
-    // Build a map of batch_id -> categories
-    const categoryMap = new Map<string, Record<string, number>>();
-    
-    for (const row of categoryResult.rows) {
-      const batchId = row.batch_id;
-      if (!categoryMap.has(batchId)) {
-        categoryMap.set(batchId, {});
-      }
-      categoryMap.get(batchId)![row.category_text] = row.category_count;
-    }
-
-    return batchResult.rows.map((row): BatchSummary => ({
+    return result.rows.map((row): BatchSummary => ({
       id: row.id,
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
-      validRootSpanCount: Number(row.valid_root_span_count),
-      percentAnnotated:
-        row.percent_annotated !== null
-          ? parseFloat(row.percent_annotated.toFixed(2))
-          : null,
-      percentGood:
-        row.percent_good !== null
-          ? parseFloat(row.percent_good.toFixed(2))
-          : null,
-      categories: categoryMap.get(row.id) || {}
+      formattedAt: row.formatted_at ? row.formatted_at.toISOString() : null,
+      validRootSpanCount: row.valid_root_span_count,
+      percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
+      percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
+      categories: row.categories,
     }));
   } catch (error) {
     console.error('Error fetching batch summaries:', error);
@@ -104,6 +80,7 @@ export const getBatchSummariesByProject = async (
 export const createNewBatch = async (
   batch: NewBatch
 ): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     const id = uuidv4();
     const { name, rootSpanIds, projectId } = batch;
@@ -145,8 +122,31 @@ export const createNewBatch = async (
       );
     }
 
-    console.log(`Attempting to async format batch ${id}`);
-    formatBatch(id);
+    // console.log(`Attempting to async format batch ${id}`);
+    // formatBatch(id);
+    const isLocal = process.env.AWS_SAM_LOCAL === 'true';
+
+    // When running locally, we need to tell the SDK to target the local SAM endpoint.
+    // The AWS_SAM_LOCAL environment variable is set by `sam local` automatically.
+    const lambda = new LambdaClient(
+      isLocal
+        ? {
+            endpoint: 'http://host.docker.internal:3001',
+            region: 'us-east-1',
+            credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
+          }
+        : {}
+    );
+
+    // The FunctionName is the logical ID from your template.yaml
+    const command = new InvokeCommand({
+      FunctionName: 'FormatBatchFunction',
+      InvocationType: isLocal ? 'RequestResponse' : 'Event', // local emulator needs RequestResponse
+      Payload: JSON.stringify({ batchId: id }),
+    });
+
+    await lambda.send(command);
+    console.log(`Successfully invoked FormatBatchFunction for batch ${id}`);
 
     return { id, projectId, name, rootSpanIds };
   } catch (e) {
@@ -156,6 +156,7 @@ export const createNewBatch = async (
 };
 
 export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary> => {
+  const pool = getPool();
   try {
   const query = `
       SELECT 
@@ -196,6 +197,7 @@ export const updateBatchById = async (
   batchId: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     const { 
       name: newName, 
@@ -261,6 +263,7 @@ export const updateBatchById = async (
 };
 
 export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
+  const pool = getPool();
   try {
     // fetch spans before deletion
     const spansResult = await pool.query<{ id: string }>(
@@ -302,57 +305,21 @@ export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
 
 export const formatBatch = async (batchId: string) => {
   try {
-    sendSSEUpdate(batchId, { 
-      status: 'started', 
-      message: 'Batch formatting started',
-      progress: 0,
-      timestamp: new Date().toISOString()
-    });
-
     console.log(`Starting to format batch ${batchId}`);
     const spanSets = await getSpanSetsFromBatch(batchId);
     console.log(`${spanSets.length} span sets extracted from batch`);
 
-    sendSSEUpdate(batchId, { 
-      status: 'processing', 
-      message: `Processing ${spanSets.length} spans with AI`,
-      progress: 25 
-    });
-
     const formattedSpanSets = await formatAllSpanSets(spanSets);
     console.log(`${formattedSpanSets.length} span sets formatted`);
-
-    sendSSEUpdate(batchId, { 
-      status: 'saving', 
-      message: 'Saving formatted data to database',
-      progress: 75 
-    });
 
     const updateDbResult = await insertFormattedSpanSets(formattedSpanSets);
     console.log(`${updateDbResult.updated} root spans formatted in DB`);
     await markBatchFormatted(batchId);
 
-    sendSSEUpdate(batchId, { 
-      status: 'completed', 
-      message: `Successfully formatted ${updateDbResult.updated} spans`,
-      progress: 100,
-      timestamp: new Date().toISOString()
-    });
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
   } catch (e) {
     console.error("batch formatting error");
     
     const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
-
-    sendSSEUpdate(batchId, { 
-      status: 'failed', 
-      message: 'Batch formatting failed',
-      error: errorMessage,
-      timestamp: new Date().toISOString()
-    })
-
-    setTimeout(() => closeSSEConnection(batchId), 1000);
 
     throw new Error("Error formatting batch");
   }
@@ -538,6 +505,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 };
 
 const markBatchFormatted = async (batchId: string) => {
+  const pool = getPool();
   try {
     const query = `
       UPDATE batches

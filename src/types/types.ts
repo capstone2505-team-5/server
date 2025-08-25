@@ -171,7 +171,8 @@ export interface BatchSummary {
   validRootSpanCount: number;
   percentAnnotated: number | null;
   percentGood: number | null;
-  categories: Record<string, number>;
+  categories: string[];
+  formattedAt: string | null;
 }
 
 export interface BatchDetail {
