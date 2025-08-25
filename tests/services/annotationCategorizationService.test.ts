@@ -8,7 +8,7 @@ import {
   pullNotesWithRootSpanId
 } from '../../src/services/annotationCategorizationService';
 import { getPool } from '../../src/db/postgres';
-import { openai } from '../../src/lib/openaiClient';
+import { getOpenAIClient } from '../../src/lib/openaiClient';
 import { getAnnotationsByBatch, clearCategoriesFromAnnotations } from '../../src/services/annotationService';
 import { addCategories } from '../../src/services/categoryService';
 import { OpenAIError } from '../../src/errors/errors';
@@ -24,13 +24,7 @@ vi.mock('../../src/db/postgres', () => ({
 }));
 
 vi.mock('../../src/lib/openaiClient', () => ({
-  openai: {
-    chat: {
-      completions: {
-        create: vi.fn(),
-      }
-    }
-  }
+  getOpenAIClient: vi.fn(),
 }));
 
 vi.mock('../../src/services/annotationService', () => ({
@@ -50,7 +44,15 @@ vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid')
 }));
 
-const mockOpenAI = vi.mocked(openai.chat.completions.create);
+const mockOpenAI = {
+  chat: {
+    completions: {
+      create: vi.fn(),
+    }
+  }
+};
+
+const mockGetOpenAIClient = vi.mocked(getOpenAIClient);
 const mockGetAnnotationsByBatch = vi.mocked(getAnnotationsByBatch);
 const mockClearCategoriesFromAnnotations = vi.mocked(clearCategoriesFromAnnotations);
 const mockAddCategories = vi.mocked(addCategories);
@@ -58,6 +60,7 @@ const mockAddCategories = vi.mocked(addCategories);
 describe('AnnotationCategorizationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetOpenAIClient.mockResolvedValue(mockOpenAI as any);
   });
 
   describe('categorizeBatch', () => {
@@ -98,10 +101,10 @@ describe('AnnotationCategorizationService', () => {
 
       mockGetAnnotationsByBatch.mockResolvedValue(mockAnnotations);
       mockClearCategoriesFromAnnotations.mockResolvedValue(2);
-      mockOpenAI.mockResolvedValueOnce({
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce({
         choices: [{ message: { content: '["spelling", "speed"]' } }]
       } as any);
-      mockOpenAI.mockResolvedValueOnce({
+      mockOpenAI.chat.completions.create.mockResolvedValueOnce({
         choices: [{ message: { content: JSON.stringify(mockCategorizedRootSpans) } }]
       } as any);
       mockAddCategories.mockResolvedValue(mockCategoriesWithIds);
@@ -179,14 +182,14 @@ describe('AnnotationCategorizationService', () => {
       const notes = ['Poor spelling', 'Slow response', 'Bad grammar'];
       const mockResponse = '["spelling", "speed", "grammar"]';
 
-      mockOpenAI.mockResolvedValue({
+      mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: mockResponse } }]
       } as any);
 
       const result = await createCategories(notes);
 
       expect(result).toEqual(['spelling', 'speed', 'grammar']);
-      expect(mockOpenAI).toHaveBeenCalledWith(
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-4o',
           temperature: 0,
@@ -205,7 +208,7 @@ describe('AnnotationCategorizationService', () => {
     it('should throw OpenAIError when API call fails', async () => {
       const notes = ['Poor spelling'];
       
-      mockOpenAI.mockRejectedValue(new Error('API Error'));
+      mockOpenAI.chat.completions.create.mockRejectedValue(new Error('API Error'));
 
       await expect(createCategories(notes))
         .rejects
@@ -215,7 +218,7 @@ describe('AnnotationCategorizationService', () => {
     it('should throw error when response is not an array', async () => {
       const notes = ['Poor spelling'];
       
-      mockOpenAI.mockResolvedValue({
+      mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: '{"not": "array"}' } }]
       } as any);
 
@@ -227,7 +230,7 @@ describe('AnnotationCategorizationService', () => {
     it('should throw error when no categories are provided', async () => {
       const notes = ['Poor spelling'];
       
-      mockOpenAI.mockResolvedValue({
+      mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: '[]' } }]
       } as any);
 
@@ -249,14 +252,14 @@ describe('AnnotationCategorizationService', () => {
         { rootSpanId: 'span-2', categories: ['speed'] }
       ];
 
-      mockOpenAI.mockResolvedValue({
+      mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [{ message: { content: JSON.stringify(expectedResult) } }]
       } as any);
 
       const result = await getCategorizedRootSpans(categories, notesWithRootSpanId);
 
       expect(result).toEqual(expectedResult);
-      expect(mockOpenAI).toHaveBeenCalledWith(
+      expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({
           model: 'gpt-4o',
           temperature: 0,
@@ -276,7 +279,7 @@ describe('AnnotationCategorizationService', () => {
       const categories = ['spelling'];
       const notesWithRootSpanId = ['Poor spelling\nrootSpanID: span-1'];
       
-      mockOpenAI.mockRejectedValue(new Error('API Error'));
+      mockOpenAI.chat.completions.create.mockRejectedValue(new Error('API Error'));
 
       await expect(getCategorizedRootSpans(categories, notesWithRootSpanId))
         .rejects

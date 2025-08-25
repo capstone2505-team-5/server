@@ -2,7 +2,7 @@ import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 import type { CategorizedAnnotation, CategorizedRootSpan, Category, Annotation } from '../types/types';
 import { getAnnotationsByBatch, clearCategoriesFromAnnotations } from './annotationService';
-import { openai } from '../lib/openaiClient';
+import { getOpenAIClient } from '../lib/openaiClient';
 import { addCategories } from './categoryService';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
@@ -73,7 +73,7 @@ export const addCategoriesToAnnotations = async (
   annotations: Annotation[], // Used to get annotation Id from the RootSpanId
   categorizedRootSpans: CategorizedRootSpan[] // RootSpanId with categories to apply
 ): Promise<CategorizedAnnotation[]> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const catMap = mapCategories(categories);
     const annMap = mapAnnotations(annotations);
@@ -122,6 +122,7 @@ const mapAnnotations = (annotations: Annotation[]): Map<string, string> => {
 }
 
 export const createCategories = async (notes: string[]): Promise<string[]> => {
+  const openai = await getOpenAIClient();
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   Group similar annotation notes into failure-mode categories.
@@ -176,6 +177,7 @@ export const pullNotesWithRootSpanId = (fullAnnotations: Annotation[]): string[]
 };
 
 export const getCategorizedRootSpans = async (categories: string[], notesWithRootSpanId: string[]): Promise<CategorizedRootSpan[]> => {
+  const openai = await getOpenAIClient();
   const systemPrompt = `
   You are an AI assistant helping with error analysis.
   You are provided a list of error categories.

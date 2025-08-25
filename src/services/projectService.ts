@@ -2,7 +2,7 @@ import { getPool } from "../db/postgres";
 import type { ProjectSummary } from '../types/types';
 
 export const getProjectSummaries = async (): Promise<ProjectSummary[]> => {
-  const pool = getPool();
+  const pool = await getPool();
    try {
     // Query 1: Get basic project data
     const projectQuery = `

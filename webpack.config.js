@@ -27,6 +27,7 @@ module.exports = {
   },
   externals: {
     'aws-sdk': 'aws-sdk',
+    'pg-native': 'pg-native',
   },
   plugins: [
     new CopyPlugin({

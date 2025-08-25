@@ -14,17 +14,21 @@ import { BatchNotFoundError } from '../errors/errors';
 import { MAX_SPANS_PER_BATCH } from '../constants/index';
 import { 
   fetchRootSpans, 
-  insertFormattedSpanSets 
+  insertFormattedSpanSets, 
+  fetchFormattedRootSpans, 
+  nullifyBatchId 
 } from './rootSpanService';
-import { openai } from '../lib/openaiClient';
+import { getOpenAIClient } from '../lib/openaiClient';
 import { OpenAIError } from '../errors/errors';
 import { jsonCleanup } from '../utils/jsonCleanup'
 import { removeAnnotationFromSpans } from './annotationService';
 
 import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constants/index';
 
-export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
-  const pool = getPool();
+export const getBatchSummariesByProject = async (
+  projectId: string
+): Promise<BatchSummary[]> => {
+  const pool = await getPool();
   try {
     // First, get the basic batch info with stats
     const batchQuery = `
@@ -64,11 +68,17 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
       projectId: row.project_id,
       name: row.name,
       createdAt: row.created_at.toISOString(),
+      validRootSpanCount: Number(row.valid_root_span_count),
+      percentAnnotated:
+        row.percent_annotated !== null
+          ? parseFloat(row.percent_annotated.toFixed(2))
+          : null,
+      percentGood:
+        row.percent_good !== null
+          ? parseFloat(row.percent_good.toFixed(2))
+          : null,
+      categories: categoryMap.get(row.id) || {},
       formattedAt: row.formatted_at ? row.formatted_at.toISOString() : null,
-      validRootSpanCount: row.valid_root_span_count,
-      percentAnnotated: row.percent_annotated !== null ? parseFloat(row.percent_annotated.toFixed(2)) : null,
-      percentGood: row.percent_good !== null ? parseFloat(row.percent_good.toFixed(2)) : null,
-      categories: row.categories,
     }));
   } catch (error) {
     console.error('Error fetching batch summaries:', error);
@@ -80,7 +90,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
 export const createNewBatch = async (
   batch: NewBatch
 ): Promise<BatchDetail> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const id = uuidv4();
     const { name, rootSpanIds, projectId } = batch;
@@ -156,7 +166,7 @@ export const createNewBatch = async (
 };
 
 export const getBatchSummaryById = async (batchId: string): Promise<BatchSummary> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
   const query = `
       SELECT 
@@ -197,7 +207,7 @@ export const updateBatchById = async (
   batchId: string,
   batchUpdate: UpdateBatch
 ): Promise<BatchDetail> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const { 
       name: newName, 
@@ -263,7 +273,7 @@ export const updateBatchById = async (
 };
 
 export const deleteBatchById = async (id: string): Promise<BatchDetail> => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     // fetch spans before deletion
     const spansResult = await pool.query<{ id: string }>(
@@ -475,6 +485,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 
   let raw: string;
   try {
+    const openai = await getOpenAIClient();
     const completion = await openai.chat.completions.create(
       {
         model: 'gpt-4o',
@@ -505,7 +516,7 @@ const formatSpanSetsChunk = async (spanSets: SpanSet[]): Promise<FormattedSpanSe
 };
 
 const markBatchFormatted = async (batchId: string) => {
-  const pool = getPool();
+  const pool = await getPool();
   try {
     const query = `
       UPDATE batches
