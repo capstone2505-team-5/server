@@ -88,7 +88,6 @@ const getDbConfig = async () => {
 
   return dbConfig;
 };
-
 /**
  * Returns a singleton instance of the PostgreSQL connection pool.
  * It creates the pool on the first call and reuses it for subsequent calls.

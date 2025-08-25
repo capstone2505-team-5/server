@@ -51,39 +51,19 @@ export const getBatchSummariesByProject = async (
       ORDER BY b.created_at DESC;
     `;
 
-    // Then get category counts for all batches in this project
-    const categoryQuery = `
-      SELECT 
-        rs.batch_id,
-        c.text AS category_text,
-        COUNT(*)::int AS category_count
-      FROM root_spans rs
-      JOIN annotations a ON a.root_span_id = rs.id
-      JOIN annotation_categories ac ON ac.annotation_id = a.id
-      JOIN categories c ON c.id = ac.category_id
-      JOIN batches b ON b.id = rs.batch_id
-      WHERE b.project_id = $1
-      GROUP BY rs.batch_id, c.text
-      ORDER BY rs.batch_id, c.text;
-    `;
+    const result = await pool.query<{
+      id: string;
+      project_id: string;
+      name: string;
+      created_at: Date;
+      formatted_at: Date | null;
+      valid_root_span_count: number;
+      percent_annotated: number | null;
+      percent_good: number | null;
+      categories: string[];
+    }>(query, [projectId]);
 
-    const [batchResult, categoryResult] = await Promise.all([
-      pool.query(batchQuery, [projectId]),
-      pool.query(categoryQuery, [projectId])
-    ]);
-
-    // Build a map of batch_id -> categories
-    const categoryMap = new Map<string, Record<string, number>>();
-    
-    for (const row of categoryResult.rows) {
-      const batchId = row.batch_id;
-      if (!categoryMap.has(batchId)) {
-        categoryMap.set(batchId, {});
-      }
-      categoryMap.get(batchId)![row.category_text] = row.category_count;
-    }
-
-    return batchResult.rows.map((row): BatchSummary => ({
+    return result.rows.map((row): BatchSummary => ({
       id: row.id,
       projectId: row.project_id,
       name: row.name,
