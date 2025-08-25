@@ -1,4 +1,8 @@
-import type { Annotation, NewAnnotation, Rating } from '../types/types';
+import type { Annotation, Rating } from '../types/types';
+import {
+  CreateAnnotationBodyInput,
+  UpdateAnnotationBodyInput,
+} from '../schemas/annotationSchemas';
 import { getPool } from '../db/postgres';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -137,9 +141,11 @@ export const getAnnotationById = async (id: string): Promise<Annotation> => {
 };
 
 
-export const createNewAnnotation = async (annotation: NewAnnotation): Promise<Annotation> => {
+export const createNewAnnotation = async (
+  annotation: CreateAnnotationBodyInput
+): Promise<Annotation> => {
   const pool = await getPool();
-  const { rootSpanId, note, rating } = annotation;
+  const { rootSpanId, note = '', rating } = annotation; // Provide default for note
   const id = uuidv4();
 
   try {
@@ -149,18 +155,12 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
       RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query
-    <
-      { 
-        id: string; 
-        root_span_id: string; 
-        note: string; 
-        rating: Rating 
-      }
-    >(
-      query,
-      [id, rootSpanId, note, rating]
-    );
+    const result = await pool.query<{
+      id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+    }>(query, [id, rootSpanId, note, rating]);
 
     const row = result.rows[0];
 
@@ -175,9 +175,12 @@ export const createNewAnnotation = async (annotation: NewAnnotation): Promise<An
     console.error(`Error creating annotation:`, error);
     throw new Error('Database error while creating annotation');
   }
-}
+};
 
-export const updateAnnotationById = async (id: string, updates: Partial<Annotation>) => {
+export const updateAnnotationById = async (
+  id: string,
+  updates: UpdateAnnotationBodyInput
+): Promise<Annotation> => {
   const fields: string[] = [];
   const values: (string | Rating)[] = [];
   let paramIndex = 1;
@@ -208,10 +211,12 @@ export const updateAnnotationById = async (id: string, updates: Partial<Annotati
       RETURNING id, root_span_id, note, rating
     `;
 
-    const result = await pool.query<{ id: string; root_span_id: string; note: string; rating: Rating }>(
-      query,
-      values
-    );
+    const result = await pool.query<{
+      id: string;
+      root_span_id: string;
+      note: string;
+      rating: Rating;
+    }>(query, values);
 
     if (result.rows.length === 0) {
       throw new AnnotationNotFoundError(id);

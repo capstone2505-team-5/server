@@ -1,3 +1,13 @@
+import {
+  createBatchSchema,
+  deleteBatchSchema,
+  formatBatchByLLMSchema,
+  getBatchesByProjectSchema,
+  getBatchSchema,
+  getBatchStatusSchema,
+  removeSpanFromBatchSchema,
+  updateBatchSchema,
+} from '../schemas/batchSchemas';
 import { Request, Response } from 'express';
 import {
   getBatchSummariesByProject,
@@ -8,19 +18,19 @@ import {
   formatBatch,
   isFormatted,
 } from '../services/batchService';
-import { NewBatch, UpdateBatch } from '../types/types';
 import { BatchNotFoundError } from '../errors/errors';
 import { fetchFormattedRootSpans, nullifyBatchId } from '../services/rootSpanService';
-import { MAX_SPANS_PER_BATCH } from '../constants/index';
 
 export const getBatchesByProject = async (req: Request, res: Response) => {
   try {
-    const projectId = req.params.id;
+    const validationResult = getBatchesByProjectSchema.safeParse(req);
 
-    if (!projectId) {
-      res.status(400).json({ error: 'projectId parameter is required' });
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
       return;
     }
+
+    const { id: projectId } = validationResult.data.params;
 
     const batches = await getBatchSummariesByProject(projectId);
     res.status(200).json(batches);
@@ -31,20 +41,16 @@ export const getBatchesByProject = async (req: Request, res: Response) => {
 };
 
 export const createBatch = async (req: Request, res: Response) => {
-  const { name, projectId, rootSpanIds }: NewBatch = req.body;
-
-  if (!name || !projectId || !Array.isArray(rootSpanIds)) {
-    res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
+  const validationResult = createBatchSchema.safeParse(req);
+  if (!validationResult.success) {
+    res.status(400).json({ errors: validationResult.error.flatten() });
     return;
   }
 
-  if (rootSpanIds.length > MAX_SPANS_PER_BATCH) {
-    res.status(400).json({ error: `Maximum batch size is ${MAX_SPANS_PER_BATCH}` });
-    return;
-  }
+  const { body } = validationResult.data;
 
   try {
-    const batch = await createNewBatch({ name, projectId, rootSpanIds });
+    const batch = await createNewBatch(body);
     res.status(201).json(batch);
   } catch (err) {
     console.error('Error creating new batch:', err);
@@ -53,22 +59,20 @@ export const createBatch = async (req: Request, res: Response) => {
 };
 
 export const getBatch = async (req: Request, res: Response) => {
-  const projectId = undefined;
-  const batchId = req.params.id as string | undefined;
-  const spanName = req.query.spanName as string | undefined;
-  const pageNumber = req.query.pageNumber as string | undefined;
-  const numberPerPage = req.query.numPerPage as string | undefined;
-  
   try {
-    if (!batchId) {
-      console.error("BatchId is required");
-      res.status(400).json({ error: "Failed to get batch" })
-      return
+    const validationResult = getBatchSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
+      return;
     }
-    
+
+    const {
+      params: { id: batchId },
+      query: { spanName, pageNumber, numPerPage: numberPerPage },
+    } = validationResult.data;
+
     const { rootSpans, totalCount } = await fetchFormattedRootSpans({
       batchId,
-      projectId,
       spanName,
       pageNumber,
       numberPerPage,
@@ -87,44 +91,38 @@ export const getBatch = async (req: Request, res: Response) => {
 };
 
 export const updateBatch = async (req: Request, res: Response) => {
-  const batchId = req.params.id;
-  const { name, rootSpanIds }:UpdateBatch = req.body;
-
-  if (!batchId) {
-    res.status(400).json({error: "BatchId required to update batch"});
-    return;
-  }
-
-  if (!name || !Array.isArray(rootSpanIds)) {
-    res.status(400).json({ error: 'Request must include name and a rootSpanIds array' });
-    return;
-  }
-
-  if (rootSpanIds.length > MAX_SPANS_PER_BATCH) {
-    res.status(400).json({ error: `Maximum batch size is ${MAX_SPANS_PER_BATCH}` });
-    return;
-  }
-
   try {
-    const updatedBatch = await updateBatchById(batchId, { name, rootSpanIds });
+    const validationResult = updateBatchSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
+      return;
+    }
+
+    const {
+      params: { id: batchId },
+      body,
+    } = validationResult.data;
+
+    const updatedBatch = await updateBatchById(batchId, body);
     res.status(200).json(updatedBatch);
   } catch (err) {
     if (err instanceof BatchNotFoundError) {
       res.status(404).json({ error: err.message });
       return;
     }
-    console.error(`Error updating batch ${batchId}:`, err);
+    console.error(`Error updating batch ${req.params.id}:`, err);
     res.status(500).json({ error: 'Failed to update batch' });
   }
 };
 
 export const deleteBatch = async (req: Request, res: Response) => {
-  const batchId = req.params.id;
   try {
-    if (!batchId) {
-      console.error("batchId query parameter is required to delete batch")
-      res.status(400).json({error: "Missing batchID query parameter"})
+    const validationResult = deleteBatchSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
+      return;
     }
+    const { id: batchId } = validationResult.data.params;
     const deletedBatch = await deleteBatchById(batchId);
     res.status(200).json({ message: 'Batch deleted successfully', deletedBatch });
   } catch (err) {
@@ -132,65 +130,73 @@ export const deleteBatch = async (req: Request, res: Response) => {
       res.status(404).json({ error: err.message });
       return;
     }
-    console.error(`Error deleting batch ${batchId}:`, err);
+    console.error(`Error deleting batch ${req.params.id}:`, err);
     res.status(500).json({ error: 'Failed to delete batch' });
   }
 };
 
 export const removeSpanFromBatch = async (req: Request, res: Response) => {
-  const batchId = req.params.batchId;
-  const spanId = req.params.spanId;
-
-  if (!batchId || !spanId) {
-    res.status(400).json({ error: "spanId and batchId required" })
-    return;
-  }
-  
   try {
+    const validationResult = removeSpanFromBatchSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
+      return;
+    }
+
+    const {
+      params: { batchId, spanId },
+    } = validationResult.data;
+
     const spanRemoved = await nullifyBatchId(spanId, batchId);
 
     if (!spanRemoved) {
-      res.status(404).json({ error: "Span not found in batch" })
+      res.status(404).json({ error: 'Span not found in batch' });
     }
 
-    res.status(200).json({ message: `Span removed from batch ${batchId}` })
+    res.status(200).json({ message: `Span removed from batch ${batchId}` });
   } catch (e) {
-    console.error("Unable to remove span from batch", e);
-    res.status(500).json({ error: "Failed to remove span from batch" });
+    console.error('Unable to remove span from batch', e);
+    res.status(500).json({ error: 'Failed to remove span from batch' });
     return;
   }
-}
+};
 
 export const formatBatchByLLM = async (req: Request, res: Response) => {
   try {
-    const batchId = req.params.batchId;
-    
-    if (!batchId) {
-      res.status(400).json({ error: "spanId and batchId required" })
+    const validationResult = formatBatchByLLMSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
       return;
     }
 
+    const {
+      params: { batchId },
+    } = validationResult.data;
+
     await formatBatch(batchId);
-    res.status(200).json({message: "success"});
+    res.status(200).json({ message: 'success' });
   } catch (e) {
-    res.status(500).json({ error: "Failed to format batch" });
+    res.status(500).json({ error: 'Failed to format batch' });
     return;
   }
-}
+};
 
 export const getBatchStatus = async (req: Request, res: Response) => {
   try {
-    const batchId = req.params.batchId;
-
-    if (!batchId) {
-      res.status(400).json({ error: "spanId and batchId required" })
+    const validationResult = getBatchStatusSchema.safeParse(req);
+    if (!validationResult.success) {
+      res.status(400).json({ errors: validationResult.error.flatten() });
       return;
     }
 
+    const {
+      params: { batchId },
+    } = validationResult.data;
+
     const result = await isFormatted(batchId);
-    res.status(200).json({ isFormatted: result })
+    res.status(200).json({ isFormatted: result });
   } catch (e) {
-    res.status(500).json({ error: "Failed to check batch status" });
+    res.status(500).json({ error: 'Failed to check batch status' });
     return;
   }
-}
+};

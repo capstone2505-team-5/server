@@ -2,7 +2,6 @@ import { error } from "console";
 import { getPool } from "../db/postgres";
 import { DEFAULT_PAGE_QUANTITY, FIRST_PAGE, MAX_SPANS_PER_PAGE } from "../constants/index";
 import type { 
-  RootSpanQueryParams, 
   FormattedSpanSet, 
   FormattedRootSpan, 
   AnnotatedRootSpan, 
@@ -10,6 +9,24 @@ import type {
   AllRootSpansResult ,
   FormattedRootSpansResult,
 } from '../types/types';
+import type {
+  getRootSpansSchema,
+  getEditBatchSpansSchema,
+  getRandomSpansSchema,
+  getRootSpanSchema,
+  getUniqueSpanNamesSchema,
+} from '../schemas/rootSpanSchemas';
+
+// Infer request fragment types from schemas (professional, conventional)
+export type GetRootSpansQueryInput = typeof getRootSpansSchema extends infer S
+  ? S extends { shape: { query: infer Q } } | any
+    ? import('zod').infer<typeof getRootSpansSchema>['query']
+    : never
+  : never;
+export type GetEditBatchSpansQueryInput = import('zod').infer<typeof getEditBatchSpansSchema>['query'];
+export type GetRandomSpansParamsInput = import('zod').infer<typeof getRandomSpansSchema>['params'];
+export type GetRootSpanParamsInput = import('zod').infer<typeof getRootSpanSchema>['params'];
+export type GetUniqueSpanNamesParamsInput = import('zod').infer<typeof getUniqueSpanNamesSchema>['params'];
 
 export class RootSpanNotFoundError extends Error {
   constructor(id: string) {
@@ -23,22 +40,22 @@ export const fetchRootSpans = async ({
   projectId,
   spanName,
   pageNumber,
-  numberPerPage,
+  numPerPage,
   searchText,
   dateFilter,
   startDate,
   endDate,
-}: RootSpanQueryParams): Promise<AllRootSpansResult> => {
+}: GetRootSpansQueryInput): Promise<AllRootSpansResult> => {
   const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
-  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+  const pageSize = parseInt(numPerPage as string) || DEFAULT_PAGE_QUANTITY;
 
   // Validate pagination input
   if (pageNum < 1 || !Number.isInteger(pageNum)) {
     throw new Error(`Invalid page number: ${pageNum}`);
   }
 
-  if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
+  if (pageSize < 1 || pageSize > MAX_SPANS_PER_PAGE || !Number.isInteger(pageSize)) {
     throw new Error(`Page number must be a number between ${FIRST_PAGE} and ${MAX_SPANS_PER_PAGE}`);
   }
 
@@ -105,8 +122,8 @@ export const fetchRootSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNum - 1) * numPerPage;
-    params.push(numPerPage, offset);
+    const offset = (pageNum - 1) * pageSize;
+    params.push(pageSize, offset);
 
     const query = `
       SELECT 
@@ -120,6 +137,7 @@ export const fetchRootSpans = async ({
         r.start_time,
         r.end_time,
         r.created_at,
+        r.formatted_at,
         a.id AS annotation_id,
         a.note,
         a.rating,
@@ -132,7 +150,7 @@ export const fetchRootSpans = async ({
       GROUP BY 
         r.id, r.trace_id, r.batch_id, r.input, r.output, 
         r.project_id, r.span_name, r.start_time, 
-        r.end_time, r.created_at,
+        r.end_time, r.created_at, r.formatted_at,
         a.id, a.note, a.rating
       ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
@@ -160,6 +178,7 @@ export const fetchRootSpans = async ({
       startTime: row.start_time,
       endTime: row.end_time,
       createdAt: row.created_at,
+      formattedAt: row.formatted_at,
       annotation: row.annotation_id
         ? {
             id: row.annotation_id,
@@ -180,7 +199,7 @@ export const fetchRootSpans = async ({
   }
 };
 
-export const getRootSpanById = async (id: string): Promise<AnnotatedRootSpan> => {
+export const getRootSpanById = async (id: GetRootSpanParamsInput['id']): Promise<AnnotatedRootSpan> => {
   const pool = await getPool();
   try {
     const query = `
@@ -298,15 +317,15 @@ export const fetchEditBatchSpans = async ({
   batchId,
   spanName,
   pageNumber,
-  numberPerPage,
+  numPerPage,
   searchText,
   dateFilter,
   startDate,
   endDate,
-}: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
+}: GetEditBatchSpansQueryInput): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
   const pool = await getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
-  const numPerPage = parseInt(numberPerPage as string) || DEFAULT_PAGE_QUANTITY;
+  const pageSize = parseInt(numPerPage as string) || DEFAULT_PAGE_QUANTITY;
   
   try {
     // Validate pagination input
@@ -314,8 +333,8 @@ export const fetchEditBatchSpans = async ({
       throw new Error(`Invalid pageNum: ${pageNum}`);
     }
 
-    if (numPerPage < 1 || numPerPage > MAX_SPANS_PER_PAGE || !Number.isInteger(numPerPage)) {
-      throw new Error(`Invalid numPerPage: ${numPerPage}`);
+    if (pageSize < 1 || pageSize > MAX_SPANS_PER_PAGE || !Number.isInteger(pageSize)) {
+      throw new Error(`Invalid numPerPage: ${pageSize}`);
     }
 
     const whereClauses: string[] = [];
@@ -379,8 +398,8 @@ export const fetchEditBatchSpans = async ({
 
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
-    const offset = (pageNum - 1) * numPerPage;
-    params.push(numPerPage, offset);
+    const offset = (pageNum - 1) * pageSize;
+    params.push(pageSize, offset);
 
     const query = `
       SELECT 
@@ -515,7 +534,7 @@ export const fetchFormattedRootSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
-}: RootSpanQueryParams): Promise<FormattedRootSpansResult> => {
+}: { batchId: string; spanName?: string; pageNumber?: string; numberPerPage?: string; }): Promise<FormattedRootSpansResult> => {
   const pool = await getPool();
   try {
     const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
@@ -632,7 +651,7 @@ export const fetchFormattedRootSpans = async ({
   }
 };
 
-export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]> => {
+export const fetchUniqueSpanNames = async (projectId: GetUniqueSpanNamesParamsInput['projectId']): Promise<string[]> => {
   const pool = await getPool();
   try {
     const query = `
@@ -654,7 +673,7 @@ export const fetchUniqueSpanNames = async (projectId: string): Promise<string[]>
 
 export const fetchRandomSpans = async ({
   projectId,
-}: { projectId: string }): Promise<AllRootSpansResult> => {
+}: GetRandomSpansParamsInput): Promise<AllRootSpansResult> => {
   const pool = await getPool();
   try {
     const whereClauses: string[] = [];

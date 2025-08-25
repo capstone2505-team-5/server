@@ -7,9 +7,10 @@ import {
   deleteBatchById
 } from '../../src/services/batchService';
 import { BatchNotFoundError } from '../../src/errors/errors';
-import { NewBatch, UpdateBatch } from '../../src/types/types';
-import { getPool } from '../../src/db/postgres';
-import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
+import type {
+  CreateBatchBodyInput,
+  UpdateBatchBodyInput,
+} from '../../src/schemas/batchSchemas';
 
 const mockQuery = vi.fn();
 // Mock the database pool
@@ -149,7 +150,7 @@ describe('BatchService', () => {
 
   describe('createNewBatch', () => {
     it('should create a new batch and invoke the formatting lambda', async () => {
-      const newBatch: NewBatch = {
+      const newBatch: CreateBatchBodyInput = {
         name: 'New Test Batch',
         projectId: 'project-1',
         rootSpanIds: ['span-1', 'span-2']
@@ -220,7 +221,7 @@ describe('BatchService', () => {
 
   describe('updateBatchById', () => {
     it('should update batch successfully', async () => {
-      const batchUpdate: UpdateBatch = {
+      const batchUpdate: UpdateBatchBodyInput = {
         name: 'Updated Batch Name',
         rootSpanIds: ['span-1', 'span-3', 'span-4']
       };

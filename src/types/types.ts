@@ -8,14 +8,7 @@ export interface Annotation {
   categories: string[];
 }
 
-export type NewAnnotation = Omit<Annotation, 'id' | 'categories'>
-
-// Using utility types to derive from the main Annotation interface
-export type CreateAnnotationRequest = Pick<Annotation, 'note' | 'rootSpanId'> & {
-  rating?: Rating;
-};
-
-export interface CategorizedRootSpan{
+export interface CategorizedRootSpan {
   rootSpanId: string;
   categories: string[];
 }
@@ -56,6 +49,7 @@ export type RawRootSpanRow = {
   created_at: string;
   formatted_input?: string;
   formatted_output?: string;
+  formatted_at: string | null;
   annotation_id: string | null;
   note: string | null;
   rating: Rating | null;
@@ -83,8 +77,9 @@ export interface AnnotatedRootSpan {
   projectId: string;
   spanName: string;
   startTime: string;
-  endTime: string;        // or Date
+  endTime: string;        
   createdAt: string;
+  formattedAt?: string | null;
   annotation: Omit<Annotation, 'rootSpanId'> | null;
 }
 
@@ -181,14 +176,6 @@ export interface BatchDetail {
   name: string;
   rootSpanIds: string[];
 }
-
-export interface NewBatch {
-  name: string;
-  projectId: string;
-  rootSpanIds: string[];
-}
-
-export type UpdateBatch = Omit<NewBatch, 'projectId'>;
 
 export interface AllRootSpansResult {
   rootSpans: AnnotatedRootSpan[];
