@@ -24,6 +24,10 @@ export const fetchRootSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
+  searchText,
+  dateFilter,
+  startDate,
+  endDate,
 }: RootSpanQueryParams): Promise<AllRootSpansResult> => {
   const pool = getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
@@ -64,6 +68,40 @@ export const fetchRootSpans = async ({
       whereClauses.push(`r.span_name = $${params.length}`);
     }
 
+    // Add text search filtering
+    if (searchText && searchText.trim()) {
+      params.push(`%${searchText.trim()}%`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
+    }
+
+    // Add date filtering
+    if (dateFilter && dateFilter !== 'all') {
+      let dateCondition = '';
+      
+      switch (dateFilter) {
+        case '12h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          break;
+        case '24h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          break;
+        case '1w':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            params.push(startDate, endDate);
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+          }
+          break;
+      }
+      
+      if (dateCondition) {
+        whereClauses.push(dateCondition);
+      }
+    }
+
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     const offset = (pageNum - 1) * numPerPage;
@@ -95,7 +133,7 @@ export const fetchRootSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -136,7 +174,7 @@ export const fetchRootSpans = async ({
       totalCount: parseInt(countResult.rows[0].count, 10),
     };
   } catch (error) {
-    console.error("Error in getAllRootSpans:", error);
+    console.error("Error in fetchRootSpans:", error);
     throw new Error("Failed to fetch root spans from the database");
   }
 };
@@ -260,6 +298,10 @@ export const fetchEditBatchSpans = async ({
   spanName,
   pageNumber,
   numberPerPage,
+  searchText,
+  dateFilter,
+  startDate,
+  endDate,
 }: Omit<RootSpanQueryParams, "projectId">): Promise<{ rootSpans: AnnotatedRootSpan[]; totalCount: number }> => {
   const pool = getPool();
   const pageNum = parseInt(pageNumber as string) || FIRST_PAGE;
@@ -299,6 +341,40 @@ export const fetchEditBatchSpans = async ({
       whereClauses.push(`r.span_name = $${params.length}`);
     }
 
+    // Add text search filtering
+    if (searchText && searchText.trim()) {
+      params.push(`%${searchText.trim()}%`);
+      whereClauses.push(`(r.input ILIKE $${params.length} OR r.output ILIKE $${params.length} OR r.id ILIKE $${params.length})`);
+    }
+
+    // Add date filtering
+    if (dateFilter && dateFilter !== 'all') {
+      let dateCondition = '';
+      
+      switch (dateFilter) {
+        case '12h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '12 hours'`;
+          break;
+        case '24h':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '24 hours'`;
+          break;
+        case '1w':
+          dateCondition = `r.start_time >= NOW() - INTERVAL '1 week'`;
+          break;
+        case 'custom':
+          if (startDate && endDate) {
+            params.push(startDate, endDate);
+            // Use DATE() to compare just the date part, and make end date inclusive of full day
+            dateCondition = `DATE(r.start_time) >= DATE($${params.length - 1}) AND DATE(r.start_time) <= DATE($${params.length})`;
+          }
+          break;
+      }
+      
+      if (dateCondition) {
+        whereClauses.push(dateCondition);
+      }
+    }
+
     const whereSQL = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 
     const offset = (pageNum - 1) * numPerPage;
@@ -330,7 +406,7 @@ export const fetchEditBatchSpans = async ({
         r.project_id, r.span_name, r.start_time, 
         r.end_time, r.created_at,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;
@@ -402,7 +478,6 @@ export const insertFormattedSpanSets = async (formattedSpanSets: FormattedSpanSe
       WHERE root_spans.id = updates.span_id
     `;
     
-    console.log(`Updating ${formattedSpanSets.length} spans with formatted content`);
     const result = await pool.query(query, params);
     return { updated: result.rowCount || 0 };
   } catch (e) {
@@ -507,7 +582,7 @@ export const fetchFormattedRootSpans = async ({
         r.end_time, r.created_at,
         r.formatted_input, r.formatted_output,
         a.id, a.note, a.rating
-      ORDER BY r.created_at DESC
+      ORDER BY r.created_at DESC, r.id ASC
       LIMIT $${params.length - 1}
       OFFSET $${params.length};
     `;

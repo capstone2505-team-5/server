@@ -26,7 +26,8 @@ import { FORMAT_BATCH_TIMEOUT_LIMIT, FORMAT_BATCH_CHUNK_SIZE } from '../constant
 export const getBatchSummariesByProject = async (projectId: string): Promise<BatchSummary[]> => {
   const pool = getPool();
   try {
-    const query = `
+    // First, get the basic batch info with stats
+    const batchQuery = `
       SELECT 
         b.id,
         b.project_id,
@@ -34,14 +35,13 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
         b.created_at,
         b.formatted_at,
         COUNT(DISTINCT rs.id) AS valid_root_span_count,
-        COUNT(DISTINCT a.id)::float / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
-        COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good,
-        COALESCE(array_agg(DISTINCT c.text) FILTER (WHERE c.text IS NOT NULL), '{}') AS categories
+        COUNT(DISTINCT a.id)::float 
+          / NULLIF(COUNT(DISTINCT rs.id), 0) * 100 AS percent_annotated,
+        COUNT(DISTINCT CASE WHEN a.rating = 'good' THEN a.id END)::float
+          / NULLIF(COUNT(DISTINCT a.id), 0) * 100 AS percent_good
       FROM batches b
       LEFT JOIN root_spans rs ON rs.batch_id = b.id
       LEFT JOIN annotations a ON a.root_span_id = rs.id
-      LEFT JOIN annotation_categories ac ON a.id = ac.annotation_id
-      LEFT JOIN categories c ON ac.category_id = c.id
       WHERE b.project_id = $1
       GROUP BY b.id, b.project_id, b.name, b.created_at
       ORDER BY b.created_at DESC;
@@ -75,6 +75,7 @@ export const getBatchSummariesByProject = async (projectId: string): Promise<Bat
     throw new Error('Failed to fetch batch summaries');
   }
 };
+
 
 export const createNewBatch = async (
   batch: NewBatch
